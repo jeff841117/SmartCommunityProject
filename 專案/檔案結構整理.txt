@@ -1,0 +1,8 @@
+專案/
+├─ app.py              # Flask 主程式
+├─ db_connection.py    # 資料庫連線
+├─ bill_model.py       # 帳單操作 (查詢/繳費/紀錄/新增帳單)
+├─ templates/
+│   ├─ index.html      # 首頁
+│   ├─ bills.html      # 帳單列表
+│   └─ payments.html   # 繳費紀錄

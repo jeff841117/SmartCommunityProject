@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>帳單查詢</title>
+    <style>
+        body { text-align: center; font-family: "Microsoft JhengHei", sans-serif; }
+        table { margin: auto; border-collapse: collapse; }
+        th, td { border: 1px solid #aaa; padding: 8px 12px; }
+        th { background-color: #f2f2f2; }
+        select, button { margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <h2>帳單查詢</h2>
+
+    {% if bills %}
+        <table>
+            <tr><th>房號</th><th>項目</th><th>金額</th><th>狀態</th><th>付款方式</th></tr>
+            {% for b in bills %}
+            <!-- b: (BillID, RoomNumber, ItemName, Amount, Status) -->
+            <tr>
+                <td>{{ b[1] }}</td>
+                <td>{{ b[2] }}</td>
+                <td>{{ b[3] }}</td>
+                <td>{{ b[4] }}</td>
+                <td>
+                    <form action="/pay_method" method="post">
+                        <!-- 必帶：用戶、帳單、金額 -->
+                        <input type="hidden" name="user_id" value="{{ user_id }}">
+                        <input type="hidden" name="bill_id" value="{{ b[0] }}">
+                        <input type="hidden" name="pay_amount" value="{{ b[3] }}">
+                        <select name="pay_method" required>
+                            <option value="">選擇付款方式</option>
+                            <option value="現金">現金</option>
+                            <option value="ATM">ATM 轉帳</option>
+                            <option value="LINE Pay">LINE Pay</option>
+                        </select>
+                        <button type="submit">確認</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p style="color:gray;">目前沒有需要繳費的款項。</p>
+    {% endif %}
+</body>
+</html>

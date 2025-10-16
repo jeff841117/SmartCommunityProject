@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>智能社區 - 收費系統</title>
+    <style>
+        body { text-align: center; font-family: "Microsoft JhengHei", sans-serif; }
+        input, button { margin-top: 10px; padding: 8px 12px; }
+    </style>
+</head>
+<body>
+    <h1>智能社區 - 收費系統</h1>
+    <p>請輸入房號（房號A101-請輸入101）：</p>
+    
+    <!-- 查帳單 -->
+    <form action="/bills" method="post">
+        <input type="text" name="room_number" placeholder="輸入房號數字 (例如 101)" required>
+        <br>
+        <button type="submit">查詢帳單</button>   
+    </form>
+    
+    <!-- 查繳費紀錄 -->
+    <form action="/payments" method="post">
+        <input type="text" name="room_number" placeholder="輸入房號數字 (例如 101)" required>
+        <br>
+        <button type="submit">查詢繳費紀錄</button>
+    </form>
+    
+</body>
+</html>

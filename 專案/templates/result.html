@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>結果</title>
+  <style> body { text-align:center; font-family:"Microsoft JhengHei", sans-serif; } </style>
+</head>
+<body>
+  <h2>{{ message }}</h2>
+  <form action="/payments" method="post">
+    <input type="hidden" name="room_number" value="">
+    <!-- 若你有房號，就帶回去查紀錄；或提供返回首頁 -->
+  </form>
+  <p><a href="/">回首頁</a></p>
+</body>
+</html>

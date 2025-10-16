@@ -1,0 +1,1 @@
+EXEC AddBill N'王小明', N'管理費';
