@@ -1,0 +1,161 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using Apt.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+<ul class="navbar-nav ms-auto">
+    @if (SignInManager.IsSignedIn(User))
+    {
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center text-dark"
+               href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="https://ui-avatars.com/api/?name=@User.Identity?.Name&size=32&background=007bff&color=fff&bold=true"
+                     class="rounded-circle me-2" width="32" height="32" alt="@User.Identity?.Name" />
+                <div class="d-none d-md-block me-2">
+                    <div class="fw-bold small">@User.Identity?.Name</div>
+                    <small class="text-muted">
+                        @{
+                            var role = User.IsInRole("Admin") ? "管理員" :
+                            User.IsInRole("Tenant") ? "住戶" : "訪客";
+                        }
+                        @role
+                    </small>
+                </div>
+                <span class="d-md-none">
+                    <span class="badge bg-@(User.IsInRole("Admin") ? "danger" : "primary") rounded-pill ms-1">
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <i class="fas fa-crown"></i>
+                        }
+                        else
+                        {
+                            <i class="fas fa-user"></i>
+                        }
+                    </span>
+                </span>
+            </a>
+
+            <ul class="dropdown-menu dropdown-menu-end shadow" style="min-width: 240px;">
+                <li class="dropdown-item-text px-3 py-3 border-bottom bg-light">
+                    <div class="d-flex align-items-center">
+                        <img src="https://ui-avatars.com/api/?name=@User.Identity?.Name&size=48&background=007bff&color=fff&bold=true"
+                             class="rounded-circle me-3" width="48" height="48" alt="@User.Identity?.Name" />
+                        <div>
+                            <h6 class="mb-0">@User.Identity?.Name</h6>
+                            <small class="text-muted">
+                                @{
+                                    var userRole = User.IsInRole("Admin") ? "👑 管理員" :
+                                    User.IsInRole("Tenant") ? "🏠 住戶" : "👤 訪客";
+                                }
+                                @userRole
+                            </small>
+                        </div>
+                    </div>
+                </li>
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" asp-area="Admin" asp-controller="Admin" asp-action="Index">
+                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>管理後台
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" asp-area="Admin" asp-controller="Admin" asp-action="Users">
+                            <i class="fas fa-users me-2 text-info"></i>用戶管理
+                        </a>
+                    </li>
+                }
+                else if (User.IsInRole("Tenant"))
+                {
+                    <li><hr class="dropdown-divider"></li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" asp-controller="Home" asp-action="Index1">
+                            <i class="fas fa-home me-2 text-success"></i>住戶中心
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item d-flex align-items-center" asp-controller="Home" asp-action="ExpressPickup">
+                            <i class="fas fa-shipping-fast me-2 text-warning"></i>快遞領取
+                        </a>
+                    </li>
+                }
+
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center" asp-controller="Account" asp-action="Profile">
+                        <i class="fas fa-user me-2 text-secondary"></i>個人資料
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center" asp-controller="Account" asp-action="ChangePassword">
+                        <i class="fas fa-key me-2 text-info"></i>更改密碼
+                    </a>
+                </li>
+                <li class="dropdown-divider"></li>
+                <li>
+                    <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline w-100">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="dropdown-item text-danger fw-bold d-flex align-items-center w-100 border-0 bg-transparent">
+                            <i class="fas fa-sign-out-alt me-2"></i>登出
+                        </button>
+                    </form>
+                </li>
+            </ul>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle text-dark" href="#" id="authDropdown" role="button" data-bs-toggle="dropdown">
+                <i class="fas fa-user-circle me-1"></i>帳戶
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+                <li>
+                    <a class="dropdown-item d-flex align-items-center" asp-controller="Account" asp-action="Login">
+                        <i class="fas fa-sign-in-alt me-2 text-primary"></i>登入
+                    </a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center text-success fw-bold" asp-controller="Account" asp-action="RegisterTenant">
+                        <i class="fas fa-home me-2"></i>🏠 住戶註冊
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item d-flex align-items-center text-warning fw-bold" asp-controller="Account" asp-action="RegisterAdmin">
+                        <i class="fas fa-user-shield me-2"></i>👑 管理員註冊
+                    </a>
+                </li>
+            </ul>
+        </li>
+    }
+</ul>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const userName = '@(User.Identity?.Name ?? "")';
+        if (userName) {
+            const avatarImgs = document.querySelectorAll('.rounded-circle');
+            avatarImgs.forEach(img => {
+                img.onerror = function() {
+                    this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&size=${this.width}&background=007bff&color=fff&bold=true`;
+                };
+            });
+        }
+
+        const logoutForms = document.querySelectorAll('form[action*="/Logout"]');
+        logoutForms.forEach(form => {
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.addEventListener('click', function(e) {
+                    if (!confirm('確定要登出嗎？您將返回首頁。')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                });
+            }
+        });
+    });
+</script>

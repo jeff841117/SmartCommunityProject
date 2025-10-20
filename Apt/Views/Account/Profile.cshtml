@@ -1,0 +1,76 @@
+﻿@{
+    ViewData["Title"] = "個人資料";
+}
+
+<h2>個人資料</h2>
+
+@if (TempData["StatusMessage"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        @TempData["StatusMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5>帳戶資訊</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>@ViewBag.UserInfo</strong></p>
+                <hr />
+                <div class="row">
+                    <div class="col-md-6">
+                        <a asp-action="ChangePassword" class="btn btn-outline-primary w-100 mb-2">更改密碼</a>
+                    </div>
+                    <div class="col-md-6">
+                        @if (!User.HasClaim(c => c.Type == "EmailVerified" && c.Value == "true"))
+                        {
+                            <a asp-action="VerifyEmail" class="btn btn-outline-warning w-100 mb-2">驗證電子郵件</a>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h6>JWT Claims</h6>
+            </div>
+            <div class="card-body p-2">
+                <ul class="list-unstyled small">
+                    @foreach (var claim in User.Claims)
+                    {
+                        <li class="mb-1">
+                            <strong>@claim.Type:</strong><br />
+                            <code class="text-muted">@claim.Value</code>
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <form asp-action="Logout" method="post" class="d-inline">
+        <button type="submit" class="btn btn-secondary">登出</button>
+    </form>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}
