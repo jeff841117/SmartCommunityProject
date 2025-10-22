@@ -1,0 +1,173 @@
+﻿@using 系統端.Models
+@model 系統端.Models.PackageViewModel
+@{
+    ViewData["Title"] = "Security ";
+    Layout = null;
+}
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="colorlib.com">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+    <div class="s002">
+        <fieldset>
+            <legend>登記領取系統</legend>
+        </fieldset>
+        <form method="get" method="post">
+            <div class="inner-form">
+                <div class="input-field third-wrap">
+                    <input id="searchphone" type="text" name="Phonenumber" placeholder="請輸入電話" required/>
+                    <button type="button" class="close-btn" id="clearphone">&times;</button>
+                </div>
+                <div class="input-field third-wrap">
+                    <input id="name" type="text" name="Name" placeholder="請輸入姓名" required/>
+                    <button type="button" class="close-btn" id="clearphone">&times;</button>
+                </div>
+
+                <!-- 搜尋按鈕 -->
+                <div class="input-field fourth-wrap">
+                    <button class="btn-search" type="submit">新增</button>
+                </div>
+            </div>
+        </form>
+    
+
+        <div class="inner-form">
+            <div class="text-center">
+                @if (Model.Packages != null && Model.Packages.Any())
+                {
+                   <table class="table">
+                        <thead>
+                            <tr>
+                                <th>包裹編號</th>
+                                <th>收件人</th>
+                                <th>電話</th>
+                                <th>領取狀態</th>
+                                <th>收取日期</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.Packages)
+                            {
+                                <tr>
+                                  <td>@p.PID</td>
+                                  <td>@p.Name</td>
+                                  <td>@p.PhoneNumber</td>
+                                  <td>
+                                   <span id="status-@p.ID" class="@(p.STA ? "status-true" : "status-false")">
+                                    @(p.STA ? "已領取" : "未領取")
+                                    </span>
+                                  </td>
+                                  <td>
+                                   <input type="checkbox" class="status-toggle" data-id="@p.ID" @(p.STA ? "checked" : "") />
+                                  </td>
+                                  <td>@p.Date</td>
+                                </tr>
+                                }
+                        </tbody>
+                    </table>
+
+                <button type="button" id="updateBtn">更新狀態</button>
+                }
+                else
+                {
+                    <p>查無資料</p>
+                }
+            </div>
+        </div>
+    </div>
+   <script>
+            document.addEventListener('DOMContentLoaded', function () {
+
+                // ---- 輸入框清除功能 ----
+                document.querySelectorAll('.input-field').forEach(function (field) {
+                    const input = field.querySelector('input');
+                    const closeBtn = field.querySelector('.close-btn');
+
+                    if (!input || !closeBtn) return; // 沒找到元素就跳過
+
+                    // 監聽輸入事件，控制清除鍵顯示
+                    input.addEventListener('input', function () {
+                        closeBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+                    });
+
+                    // 點擊 X 清除輸入
+                    closeBtn.addEventListener('click', function () {
+                        input.value = '';
+                        closeBtn.style.display = 'none';
+                        input.focus();
+                    });
+                });
+
+                // ---- checkbox 批次更新功能 ----
+                const updateBtn = document.getElementById('updateBtn');
+                const updateUrl = '@Url.Action("UpdateStatusBatch", "Home")'; // 後端 Controller Action
+
+                if (!updateBtn) {
+                    console.warn('⚠️ 找不到更新按鈕 #updateBtn');
+                    return;
+                }
+
+                updateBtn.addEventListener('click', function () {
+                    console.log("🟢 更新按鈕被點擊了");
+
+                    const checkboxes = document.querySelectorAll('.status-toggle');
+                    if (!checkboxes.length) {
+                        alert('沒有可更新的資料');
+                        return;
+                    }
+
+                    // 收集所有 checkbox 的狀態
+                    const updates = Array.from(checkboxes).map(cb => ({
+                        Id: parseInt(cb.dataset.id),
+                        Status: cb.checked
+                    }));
+
+                    // 發送更新請求
+                    fetch(updateUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(updates)
+                    })
+                    .then(response => {
+                        console.log("📡 伺服器回應狀態碼:", response.status);
+                        if (!response.ok) throw new Error('更新失敗，HTTP 狀態碼: ' + response.status);
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('✅ 更新成功:', data);
+
+                        // 更新畫面上的狀態文字
+                        updates.forEach(item => {
+                            const span = document.getElementById('status-' + item.Id);
+                            if (span) {
+                                span.textContent = item.Status ? '已領取' : '未領取';
+                                span.classList.toggle('status-true', item.Status);
+                                span.classList.toggle('status-false', !item.Status);
+                            }
+                        });
+
+                        alert('狀態已更新');
+                    })
+                    .catch(error => {
+                        console.error('❌ 更新錯誤:', error);
+                        alert('更新失敗：' + error.message);
+                    });
+                });
+            });
+   </script>
+
+</body>
+</html>
+@section script{
+    <script src="~/lib/jquery-validation/dist/jquery.validate.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js"></script>
+
+}
