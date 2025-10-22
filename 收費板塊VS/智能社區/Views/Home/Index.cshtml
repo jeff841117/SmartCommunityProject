@@ -1,0 +1,99 @@
+﻿@model SmartCommunity.Models.QueryRoomVm
+@{
+    ViewData["Title"] = "智能社區 - 收費系統";
+}
+
+<style>
+    /* 頁面主體置中與背景色 */
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .hero {
+        background: linear-gradient(90deg, #5b7bfa, #8b5cf6);
+        color: white;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        margin-bottom: 40px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    }
+
+        .hero h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+    .card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 30px;
+        background-color: white;
+    }
+
+    label {
+        font-weight: bold;
+    }
+
+    .btn-primary {
+        background-color: #5b7bfa;
+        border: none;
+        transition: 0.2s;
+    }
+
+        .btn-primary:hover {
+            background-color: #4c6ef5;
+        }
+
+    .btn-outline-secondary {
+        border-radius: 8px;
+    }
+
+    .admin-btn {
+        margin-top: 30px;
+        display: flex;
+        justify-content: center;
+    }
+</style>
+
+<div class="container py-5">
+    <!-- 頂部主題區 -->
+    <div class="hero">
+        <h1>智能社區 - 收費系統</h1>
+        <p>快速查詢帳單與繳費紀錄，讓社區管理更輕鬆 ✨</p>
+    </div>
+
+    <!-- 查詢卡片 -->
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card text-center">
+                <form asp-action="GoBills" method="post" class="mb-4">
+                    <label class="form-label">查詢未繳帳單</label>
+                    <div class="input-group">
+                        <input asp-for="RoomInput" class="form-control" placeholder="輸入房號(例如 101)" />
+                        <button type="submit" class="btn btn-primary">查詢</button>
+                    </div>
+                </form>
+
+                <form asp-action="GoPayments" method="post">
+                    <label class="form-label">查詢繳費紀錄</label>
+                    <div class="input-group">
+                        <input asp-for="RoomInput" class="form-control" placeholder="輸入房號(例如 101)" />
+                        <button type="submit" class="btn btn-primary">查詢</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 後台按鈕 -->
+            @if (User.IsInRole("Admin"))
+            {
+                <div class="admin-btn">
+                    <a asp-controller="AdminBills" asp-action="Create" class="btn btn-primary">
+                        後台：新增帳單
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>

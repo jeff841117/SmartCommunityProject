@@ -1,0 +1,59 @@
+﻿@model IEnumerable<dynamic>
+@{
+    var userId    = (int)ViewBag.UserId;
+    var room      = (string)ViewBag.Room;
+    var userName  = (string)ViewBag.UserName;
+    var roomInput = (string)ViewBag.RoomInput;
+    ViewData["Title"] = $"帳單查詢（{room} {userName}）";
+}
+<h2>@ViewData["Title"]</h2>
+
+@if (TempData["Msg"] != null)
+{
+    <div style="color:green">@TempData["Msg"]</div>
+}
+
+@if (!Model.Any())
+{
+    <p style="color:gray;">目前沒有需要繳費的款項。</p>
+}
+else
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>帳單ID</th>
+                <th>項目</th>
+                <th>金額</th>
+                <th>狀態</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.BillID</td>
+                <td>@b.ItemName</td>
+                <td>@((decimal)b.Amount).ToString("N2")</td>
+                <td>@b.Status</td>
+                <td>
+                    <form asp-action="Pay" method="post">
+                        <input type="hidden" name="UserId"    value="@userId" />
+                        <input type="hidden" name="BillId"    value="@b.BillID" />
+                        <input type="hidden" name="PayAmount" value="@b.Amount" />
+                        <input type="hidden" name="RoomInput" value="@roomInput" />
+                        <select name="PayMethod" required>
+                            <option value="">選擇付款方式</option>
+                            <option value="現金">現金</option>
+                            <option value="ATM">ATM 轉帳</option>
+                            <option value="LINE Pay">LINE Pay</option>
+                        </select>
+                        <button type="submit">確認</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

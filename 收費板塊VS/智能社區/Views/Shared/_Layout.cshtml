@@ -1,0 +1,117 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<IdentityUser> SignInManager
+@inject UserManager<IdentityUser> UserManager
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - 智能社區</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/智能社區.styles.css" asp-append-version="true" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">智能社區</a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+                        aria-controls="mainNav" aria-expanded="false" aria-label="切換導覽">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div id="mainNav" class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <!-- 左側功能選單 -->
+                    <ul class="navbar-nav me-auto mb-2 mb-sm-0">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+                        </li>
+
+                        @* === 依身分顯示不同連結 === *@
+                        @if (SignInManager.IsSignedIn(User) && !User.IsInRole("Admin"))
+                        {
+                            <!-- 一般用戶：直接看自己的資料 -->
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Bills" asp-action="MyUnpaid">未繳帳單</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Payments" asp-action="MyHistory">繳費紀錄</a>
+                            </li>
+                        }
+                        else if (User.IsInRole("Admin"))
+                        {
+                            <!-- 管理者：看總覽列表 -->
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Bills" asp-action="UnpaidAll">未繳總覽</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="Bills" asp-action="Index">帳單總覽</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-controller="AdminUsers" asp-action="Index">住戶管理</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-warning fw-semibold" asp-controller="AdminBills" asp-action="Create">
+                                    後台：新增帳單
+                                </a>
+                            </li>
+                        }
+                    </ul>
+
+                    <!-- 右側登入/登出區 -->
+                    <ul class="navbar-nav">
+                        @if (SignInManager.IsSignedIn(User))
+                        {
+                            <li class="nav-item d-flex align-items-center me-2">
+                                <span class="navbar-text">
+                                    您好，@UserManager.GetUserName(User)
+                                    @if (User.IsInRole("Admin"))
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">Admin</span>
+                                    }
+                                </span>
+                            </li>
+                            <li class="nav-item">
+                                <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index", "Home")" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-outline-secondary btn-sm">登出</button>
+                                </form>
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+                                <a class="btn btn-primary btn-sm me-2" asp-area="Identity" asp-page="/Account/Login">登入</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="btn btn-outline-primary btn-sm" asp-area="Identity" asp-page="/Account/Register">註冊</a>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - 智能社區 - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

@@ -1,0 +1,38 @@
+﻿@model IEnumerable<SmartCommunity.Models.ViewModels.PaymentRowVm>
+@{
+    ViewData["Title"] = ViewBag.Title ?? "繳費紀錄";
+}
+<h2>@ViewData["Title"]</h2>
+
+@if (Model.Any())
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>房號</th>
+                <th>住戶</th>
+                <th>項目</th>
+                <th>金額</th>
+                <th>日期</th>
+                <th>方式</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.RoomNumber</td>
+                    <td>@r.UserName</td>
+                    <td>@r.ItemName</td>
+                    <td>@r.PayAmount.ToString("N2")</td>
+                    <td>@r.PayDate.ToString("yyyy-MM-dd")</td>
+                    <td>@r.PayMethod</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p style="color:gray;">目前沒有繳費紀錄。</p>
+}

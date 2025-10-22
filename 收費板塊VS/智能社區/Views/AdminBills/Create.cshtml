@@ -1,0 +1,100 @@
+﻿@model SmartCommunity.Models.CreateBillVm
+@{
+    ViewData["Title"] = "新增帳單";
+}
+
+<h2 class="mb-3">新增帳單</h2>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (!string.IsNullOrWhiteSpace(Model?.Error))
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form asp-action="Create" method="post" class="row g-3">
+    @Html.AntiForgeryToken()
+
+    <div asp-validation-summary="All" class="text-danger"></div>
+
+    <!-- 住戶 -->
+    <div class="col-md-6">
+        <label asp-for="UserId" class="form-label">住戶</label>
+        <select asp-for="UserId" class="form-select">
+            <option value="">-- 請選擇住戶 --</option>
+            @foreach (var u in Model.Users)
+            {
+                <option value="@u.Id" selected="@(Model.UserId == u.Id ? "selected" : null)">
+                    @u.Label
+                </option>
+            }
+        </select>
+        <span asp-validation-for="UserId" class="text-danger"></span>
+    </div>
+
+    <!-- 收費項目 -->
+    <div class="col-md-6">
+        <label asp-for="FeeItemId" class="form-label">收費項目</label>
+        <select asp-for="FeeItemId" class="form-select" id="feeItemSelect">
+            <option value="">-- 請選擇項目 --</option>
+            @foreach (var f in Model.FeeItems)
+            {
+                var unit = string.IsNullOrWhiteSpace(f.Unit) ? "次" : f.Unit;
+                <option value="@f.Id"
+                        data-price="@f.UnitPrice"
+                        data-unit="@unit"
+                        selected="@(Model.FeeItemId == f.Id ? "selected" : null)">
+                    @f.Name (@f.UnitPrice/@unit)
+                </option>
+            }
+        </select>
+        <span asp-validation-for="FeeItemId" class="text-danger"></span>
+    </div>
+
+    <!-- 用量（給水/電） -->
+    <div class="col-md-6">
+        <label asp-for="Usage" class="form-label">用量（度/噸…）</label>
+        <input asp-for="Usage" type="number" step="0.01" class="form-control" />
+        <span class="form-text">若為水/電，填用量；管理費可留空。</span>
+        <span asp-validation-for="Usage" class="text-danger"></span>
+    </div>
+
+    <!-- 直接輸入金額（非用量計價時） -->
+    <div class="col-md-6">
+        <label asp-for="Amount" class="form-label">金額（直接輸入）</label>
+        <input asp-for="Amount" type="number" step="0.01" class="form-control" />
+        <span class="form-text">若無用量或非用量型項目，可直接輸入金額。</span>
+        <span asp-validation-for="Amount" class="text-danger"></span>
+    </div>
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-primary">新增</button>
+        <a asp-controller="Bills" asp-action="Index" class="btn btn-outline-secondary ms-2">返回清單</a>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // 小幫手：當選到有單價的費用 + 有輸入用量，就即時計算建議金額（不送出，只提示）
+        const feeSel = document.getElementById('feeItemSelect');
+        const usageInput = document.getElementById('Usage');
+        const amountInput = document.getElementById('Amount');
+
+        function hintAmount() {
+            const opt = feeSel.options[feeSel.selectedIndex];
+            const price = parseFloat(opt?.dataset?.price || "0");
+            const usage = parseFloat(usageInput?.value || "0");
+            if (!isNaN(price) && price > 0 && !isNaN(usage) && usage > 0) {
+                const calc = (price * usage).toFixed(2);
+                amountInput.placeholder = `建議金額：${calc}`;
+            } else {
+                amountInput.placeholder = '';
+            }
+        }
+        feeSel?.addEventListener('change', hintAmount);
+        usageInput?.addEventListener('input', hintAmount);
+    </script>
+}

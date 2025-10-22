@@ -1,0 +1,29 @@
+﻿@model SmartCommunity.Models.PayRequestVm
+@{
+    ViewData["Title"] = "付款說明";
+}
+<h2>付款說明</h2>
+
+<p>方式：<b>@Model.PayMethod</b>　金額：<b>@Model.PayAmount</b></p>
+
+@if (Model.PayMethod == "現金")
+{
+    <p style="color:#444">請至管理室繳交費用。</p>
+}
+else if (Model.PayMethod == "ATM")
+{
+    <p>銀行代碼：<b>000</b><br />帳號：<b>123-456-789-000</b></p>
+}
+else if (Model.PayMethod == "LINE Pay")
+{
+    <p>請掃描以下 QR Code：</p>
+    <img src="~/static/linepay_qr.png" alt="LINE Pay QR" style="max-width:200px" />
+}
+
+<form asp-action="Pay" method="post" style="margin-top:12px;">
+    <input type="hidden" name="UserId" value="@Model.UserId" />
+    <input type="hidden" name="BillId" value="@Model.BillId" />
+    <input type="hidden" name="PayAmount" value="@Model.PayAmount" />
+    <input type="hidden" name="PayMethod" value="@Model.PayMethod" />
+    <button type="submit">完成</button>
+</form>

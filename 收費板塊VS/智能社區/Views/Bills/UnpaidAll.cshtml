@@ -1,0 +1,62 @@
+﻿@model IEnumerable<SmartCommunity.Models.Bill>
+@{
+    ViewData["Title"] = "未繳帳單總覽";
+    var total = Model.Sum(x => x.Amount);
+    var count = Model.Count();
+}
+
+<div class="container my-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="m-0">@ViewData["Title"]</h3>
+        <div class="text-muted">
+            共 <span class="fw-semibold">@count</span> 筆，合計
+            <span class="fw-semibold">@total.ToString("#,0.##")</span>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-success">目前沒有未繳帳單 🎉</div>
+    }
+    else
+    {
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 10%;">房號</th>
+                            <th style="width: 15%;">住戶</th>
+                            <th style="width: 25%;">收費項目</th>
+                            <th style="width: 15%;">金額</th>
+                            <th style="width: 15%;">狀態</th>
+                            <th style="width: 20%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@b.User?.RoomNumber</td>
+                                <td>@b.User?.UserName</td>
+                                <td>@b.FeeItem?.ItemName</td>
+                                <td>@b.Amount.ToString("#,0.##")</td>
+                                <td>
+                                    <span class="badge bg-warning text-dark">未繳</span>
+                                </td>
+                                <td class="text-end">
+                                    @* 若要快速進住戶視角，可放快捷 *@
+                                    <a class="btn btn-outline-primary btn-sm"
+                                       asp-controller="Payments" asp-action="Index" asp-route-userId="@b.UserID">
+                                        查看繳費紀錄
+                                    </a>
+                                    @* 若有 AdminBills/SetPaid 之類 API，也可以在這放「標記為已繳」按鈕 *@
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

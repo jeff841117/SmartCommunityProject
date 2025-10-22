@@ -1,0 +1,31 @@
+﻿@model IEnumerable<SmartCommunity.Models.Bill>
+
+@{
+    ViewData["Title"] = "帳單總覽（管理者）";
+}
+
+<h3>@ViewData["Title"]</h3>
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>住戶</th>
+            <th>房號</th>
+            <th>項目</th>
+            <th>金額</th>
+            <th>狀態</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var b in Model)
+        {
+            <tr>
+                <td>@b.User?.UserName</td>
+                <td>@b.User?.RoomNumber</td>
+                <td>@b.FeeItem?.ItemName</td>
+                <td>@b.Amount</td>
+                <td>@b.Status</td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,187 @@
+﻿@model IEnumerable<SmartCommunity.Models.Bill>
+@{
+    ViewData["Title"] = "未繳帳單";
+}
+
+<div class="container my-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="m-0">
+                            <span class="me-2">房號：</span>
+                            <span class="badge bg-primary fs-6">@ViewBag.Room</span>
+                        </h4>
+                        <a class="btn btn-outline-secondary btn-sm" asp-controller="Payments" asp-action="MyHistory">
+                            查看繳費紀錄
+                        </a>
+                    </div>
+
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            @TempData["Success"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    @if (TempData["Error"] != null)
+                    {
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            @TempData["Error"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+                    @if (TempData["Info"] != null)
+                    {
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            @TempData["Info"]
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    }
+
+                    @if (!Model.Any())
+                    {
+                        <div class="text-center py-5">
+                            <h5 class="text-muted mb-3">目前沒有未繳帳單 🎉</h5>
+                            <a class="btn btn-primary" asp-controller="Payments" asp-action="MyHistory">查看繳費紀錄</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 30%;">收費項目</th>
+                                        <th style="width: 20%;">應繳金額</th>
+                                        <th style="width: 20%;">狀態</th>
+                                        <th style="width: 30%;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var b in Model)
+                                    {
+                                        <tr>
+                                            <td class="fw-semibold">@b.FeeItem?.ItemName</td>
+                                            <td>@b.Amount.ToString("#,0.##")</td>
+                                            <td><span class="badge bg-warning text-dark">未繳</span></td>
+                                            <td class="text-end">
+                                                <button class="btn btn-success btn-sm"
+                                                        data-bs-toggle="modal"
+                                                        data-bs-target="#payModal"
+                                                        data-billid="@b.BillID"
+                                                        data-item="@b.FeeItem?.ItemName"
+                                                        data-amount="@b.Amount">
+                                                    立即繳費
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* 繳費彈窗（顯示付款方式說明/QR） *@
+<div class="modal fade" id="payModal" tabindex="-1" aria-labelledby="payModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-controller="Payments" asp-action="Pay" method="post">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h5 class="modal-title" id="payModalLabel">確認付款</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="billId" id="pay-billId" />
+
+                    <div class="mb-3">
+                        <label class="form-label">項目</label>
+                        <input type="text" class="form-control" id="pay-item" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">應繳金額</label>
+                        <input type="text" class="form-control" id="pay-amount-display" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">付款方式</label>
+                        <select class="form-select" name="method" id="pay-method" required>
+                            <option value="現金">現金</option>
+                            <option value="轉帳(ATM)">轉帳(ATM)</option>
+                            <option value="LinePay">LinePay</option>
+                        </select>
+                    </div>
+
+                    @* ↓ 會根據付款方式即時切換內容 *@
+                    <div id="method-hint" class="border rounded p-3 bg-light">
+                        <div data-method="現金">
+                            請至管理室繳交，謝謝。
+                        </div>
+                        <div data-method="轉帳(ATM)" class="d-none">
+                            銀行代碼: <strong>000</strong>　帳號: <strong>1111-2222-3333-4444</strong><br />
+                            <small class="text-muted">*轉帳時請在備註欄輸入姓名和帳號後五碼或截圖傳訊息至管理人員*</small>
+                        </div>
+                        <div data-method="LinePay" class="d-none text-center">
+                            <div class="mb-2">請使用 LinePay 掃描下方 QR Code</div><br />
+                            <small class="text-muted">*轉帳時請在備註欄輸入姓名和帳號後五碼或截圖傳訊息至管理人員*</small>
+                            <img src="@((string)ViewBag.LinePayQr)" alt="LinePay QR" style="max-width: 240px; width: 100%; height: auto;" />
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info small mt-3">
+                        點選確認後，管理員會盡快確認入帳狀況，謝謝。
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">確認</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function(){
+          const modal = document.getElementById('payModal');
+          const methodSelect = document.getElementById('pay-method');
+          const hintBox = document.getElementById('method-hint');
+
+          // 切換提示/QR
+          function updateHint() {
+            const val = methodSelect.value;
+            // 隱藏全部
+            hintBox.querySelectorAll('[data-method]').forEach(el => el.classList.add('d-none'));
+            // 顯示對應
+            const target = hintBox.querySelector('[data-method="' + val + '"]');
+            if (target) target.classList.remove('d-none');
+          }
+
+          // 初始掛事件
+          methodSelect.addEventListener('change', updateHint);
+
+          // 開啟彈窗時帶入資料、重設顯示
+          modal.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('pay-billId').value = btn.getAttribute('data-billid');
+            document.getElementById('pay-item').value = btn.getAttribute('data-item') ?? '';
+            document.getElementById('pay-amount-display').value = btn.getAttribute('data-amount');
+
+            // 預設選第一個（或保留上次選擇，視需求）
+            methodSelect.value = '現金';
+            updateHint();
+          });
+        })();
+    </script>
+}

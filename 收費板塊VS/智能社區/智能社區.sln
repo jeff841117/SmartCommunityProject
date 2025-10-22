@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.0.11116.177 d18.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartCommunity", "SmartCommunity.csproj", "{23C8EE72-245A-4C06-8533-158F69CCBDCB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{23C8EE72-245A-4C06-8533-158F69CCBDCB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23C8EE72-245A-4C06-8533-158F69CCBDCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23C8EE72-245A-4C06-8533-158F69CCBDCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23C8EE72-245A-4C06-8533-158F69CCBDCB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {81AC19C9-FEF0-417A-9651-014B944F56D4}
+	EndGlobalSection
+EndGlobal

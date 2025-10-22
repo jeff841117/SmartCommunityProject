@@ -1,0 +1,33 @@
+﻿@model IEnumerable<SmartCommunity.Models.Payment>
+
+@{
+    ViewData["Title"] = "繳費總覽（管理者）";
+}
+
+<h3>@ViewData["Title"]</h3>
+
+<table class="table table-bordered table-sm">
+    <thead>
+        <tr>
+            <th>住戶</th>
+            <th>房號</th>
+            <th>項目</th>
+            <th>帳單金額</th>
+            <th>付款金額</th>
+            <th>付款日期</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var p in Model)
+        {
+            <tr>
+                <td>@p.Bill?.User?.UserName</td>
+                <td>@p.Bill?.User?.RoomNumber</td>
+                <td>@p.Bill?.FeeItem?.ItemName</td>
+                <td>@p.Bill?.Amount</td>
+                <td>@p.Amount</td>
+                <td>@p.PaymentDate.ToString("yyyy/MM/dd")</td>
+            </tr>
+        }
+    </tbody>
+</table>

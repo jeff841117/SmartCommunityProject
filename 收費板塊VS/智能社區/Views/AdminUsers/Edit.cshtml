@@ -1,0 +1,49 @@
+﻿@model SmartCommunity.Models.User
+@{
+    ViewData["Title"] = "編輯住戶資料";
+}
+
+<div class="container my-4">
+    <h3 class="mb-3">@ViewData["Title"]</h3>
+
+    <!-- 顯示驗證錯誤 -->
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <form asp-action="Edit" method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="UserID" />
+
+        <div class="mb-3">
+            <label asp-for="UserName" class="form-label"></label>
+            <input asp-for="UserName" class="form-control" />
+            <span asp-validation-for="UserName" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="RoomNumber" class="form-label"></label>
+            <input asp-for="RoomNumber" class="form-control" />
+            <span asp-validation-for="RoomNumber" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+            <label asp-for="Phone" class="form-label"></label>
+            <input asp-for="Phone" class="form-control" />
+            <span asp-validation-for="Phone" class="text-danger"></span>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">儲存</button>
+            <a asp-action="Index" class="btn btn-secondary">返回</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
