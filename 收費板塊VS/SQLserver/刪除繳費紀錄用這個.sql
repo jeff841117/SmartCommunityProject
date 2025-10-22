@@ -1,0 +1,1 @@
+EXEC DeletePaymentsByRoom @RoomNumber = N'A101';
