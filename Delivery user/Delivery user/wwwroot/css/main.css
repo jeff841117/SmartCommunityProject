@@ -1,0 +1,259 @@
+﻿/* === 修正版：背景與主容器置中 === */
+html, body {
+    height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', '微軟正黑體', sans-serif;
+    color: #fff;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.7), rgba(200,200,200,0.6)), url("../images/Searchs_002.png") no-repeat center center fixed;
+    background-size: cover;
+    display: flex;
+    justify-content: center;
+    align-items: center; /* ✅ 垂直置中 */
+}
+
+/* === 主要內容容器 === */
+.main-container {
+    background-color: rgba(50, 50, 50, 0.75);
+    border-radius: 16px;
+    padding: 50px 70px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    max-width: 400px;
+    width: 90%;
+}
+
+/* === 強制背景圖滿版覆蓋 === */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: inherit;
+    background-size: cover;
+    z-index: -1; /* ✅ 背景在最下層 */
+}
+
+/* === 標題 === */
+h1 {
+    font-size: 2.8rem;
+    color: #c7904b;
+    font-weight: 700;
+    margin-bottom: 40px;
+}
+
+/* === 按鈕樣式 === */
+button, .btn {
+    display: block;
+    width: 260px;
+    padding: 16px 0;
+    margin: 15px auto;
+    border: none;
+    border-radius: 10px;
+    background-color: #c18a56;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+    button:hover, .btn:hover {
+        background-color: #a16b3d;
+        transform: scale(1.03);
+    }
+
+
+/* === 主容器 === */
+.s002 {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 0 15px;
+}
+
+    /* === 移除 fieldset 邊框 === */
+    .s002 fieldset {
+        border: none !important;
+        outline: none !important;
+        margin: 0;
+        padding: 0;
+    }
+
+    /* === 標題 === */
+    .s002 legend {
+        font-size: 48px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 40px;
+        text-align: center;
+        text-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    /* === 搜尋區塊 === */
+    .s002 .inner-form {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.7);
+        border-radius: 14px;
+        padding: 25px 30px;
+        box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+        margin-bottom: 50px;
+
+    }
+
+    /* 確保輸入容器是相對定位並以 inline-block 讓寬度與排列穩定 */
+    .s002 .input-field {
+        position: relative;
+        display: inline-block;
+        vertical-align: middle;
+    }
+
+        /* 輸入欄：右側留空以容納清除按鈕 */
+        .s002 .input-field input {
+            height: 60px;
+            width: 250px;
+            border-radius: 6px;
+            border: none;
+            padding: 0 42px 0 15px; /* 🔹 右側預留空間，讓 × 不擋文字 */
+            font-size: 16px;
+            box-sizing: border-box;
+            background: #fff;
+            color: #333;
+            outline: none;
+            display: block;
+        }
+
+/* ---- 清除按鈕 (X) ---- */
+.clear-btn {
+    position: absolute;
+    right: 10px; /* 🔹 靠右側，但不出框 */
+    top: 50%;
+    transform: translateY(-45%); /* 🔹 稍微上移，視覺置中更準 */
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #b77e4c;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: none; /* 由 JS 控制 */
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+    height: 20px; /* 🔹 限制點擊範圍，不會遮住輸入區 */
+    width: 20px;
+    text-align: center;
+    transition: none !important; /* 移除 hover 動畫 */
+    transform: translateY(-45%) !important; /* 僅保留定位，不受 hover 影響 */
+}
+
+.clea-btn:hover {
+    color: red;
+    transform: translateY(-45%) !important; /* 移除放大或浮動效果 */
+}
+
+    /* hover 微調顏色 */
+    .clear-btn:hover {
+        color: #a16b3d;
+    }
+
+/* 移除瀏覽器內建搜尋欄的 clear 按鈕（IE/Edge/Chrome） */
+input::-ms-clear {
+    display: none;
+}
+
+input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+}
+
+/* === 查詢按鈕 === */
+.btn-search {
+    height: 58px;
+    width: 150px;
+    background: #b78a62;
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 600;
+    margin-left: 15px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+
+    .btn-search:hover {
+        background: #a16b3d;
+        transform: scale(1.03);
+    }
+
+/* === 查詢結果 === */
+.result-container {
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    width: 80%;
+    max-width: 700px;
+    padding: 25px 30px;
+    text-align: center;
+    margin: 5px auto 0 auto;
+}
+
+
+.result-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #f5c06f;
+    margin-bottom: 15px;
+    text-align: center; /* ✅ 置中 */
+}
+
+/* === 查無資料 === */
+.no-data {
+    color: rgba(255,255,255,0.9);
+    font-size: 1.1rem;
+    text-align: center;
+    margin-top: 15px;
+}
+
+/* === 響應式 === */
+@media (max-width: 768px) {
+    .s002 legend {
+        font-size: 36px;
+        margin-bottom: 30px;
+    }
+
+    .s002 .inner-form {
+        flex-direction: column;
+        padding: 15px;
+        margin-bottom: 40px;
+    }
+
+        .s002 .input-field input {
+            padding-right: 46px;
+            width: 100%;
+        }
+
+        .close-btn {
+            right: 12px;
+        }
+
+        .btn-search {
+            width: 100%;
+            margin-top: 10px;
+            margin-left: 0;
+        }
+
+        .result-container {
+            width: 95%;
+            padding: 20px;
+        }
+
+        .result-title {
+            font-size: 1.3rem;
+        }
+    }

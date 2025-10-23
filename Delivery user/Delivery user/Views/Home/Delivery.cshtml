@@ -1,0 +1,202 @@
+﻿@using Microsoft.AspNetCore.Builder
+@model Delivery_user.Models.DeliveryViewModel
+@{
+    ViewData["Title"] = "Delivery";
+}
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="colorlib.com">
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,400,500" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/delivery.css" asp-append-version="true" />
+</head>
+<body>
+    <section class="delivery-page"></section>
+        <div class="delivery-container">
+            <h1 class="page-title">快遞服務</h1> 
+
+            <div class="section">
+            <div class="delivery-subtitle">一般寄送服務 (常溫 / 冷藏)</div>
+                
+                <form asp-action="Delivery" asp-controller="Home" method="post">
+                    <div class="inner-form">
+                        <h2 class="from-title">寄件者資訊:</h2>
+                        <div class="input-group">
+                            <!-- 第一個輸入框 -->
+                            <div class="input-field first-wrap">
+                                <input id="SenderName" type="text" name="SenderName" placeholder="請輸入寄件者姓名" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+
+                            <!-- 第二個輸入框 -->
+                            <div class="input-field second-wrap">
+                                <input id="SenderTel" type="text" name="SenderPhn" placeholder="請輸入寄件者電話" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+
+                            <!-- 第三個輸入框 -->
+                            <div class="input-field third-wrap">
+                                <input id="SenderAddress" type="text" name="SenderAddress" placeholder="請輸入寄件者地址" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+                        </div>
+
+                        <h2 class="from-title">收件者資訊:</h2>
+                        <div class="input-group">
+                            <div class="input-field fourth-wrap">
+                                <input id="RecipientName" type="text" name="RecipientName" placeholder="請輸入收件者姓名" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+
+                            <div class="input-field fifth-wrap">
+                                <input id="RecipientTel" type="text" name="RecipientPhn" placeholder="請輸入收件者電話" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+
+                            <div class="input-field sixth-wrap">
+                                <input id="RecipientAddress" type="text" name="RecipientAddress" placeholder="請輸入收件者地址" required/>
+                                <button type="button" class="clear-btn">&times;</button>
+                            </div>
+
+                            <div class="input-field seventh-wrap">
+                                <input id="SendDate" type="date" name="SendDateString" placeholder="請選擇日期" required/>
+                                <button type="button" class="clear-btn"">&times;</button>
+                            </div>
+                        </div>
+
+                        <!-- 搜尋按鈕 -->
+                        <div class="input-field eighth-wrap">
+                            <button class="btn-send" type="submit">送出</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div id="deliveryResult" class="delivery-result text-center" style="display:none;">
+                @if (Model?.DetailList?.Any() == true)
+                {
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>包裹編號</th>
+                                <th>寄件者姓名</th>
+                                <th>寄件者電話</th>
+                                <th>寄件者地址</th>
+                                <th>收件者姓名</th>
+                                <th>收件者電話</th>
+                                <th>收件者地址</th>
+                                <th>寄件日期</th>
+                                <th>寄件狀態</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (Delivery_user.Models.Details user in Model.DetailList)
+                            {
+                                <tr>
+                                    <th>@user.PackageID</th>
+                                    <th>@user.SenderName</th>
+                                    <th>@user.SenderPhn</th>
+                                    <th>@user.SenderAddress</th>
+                                    <th>@user.RecipientName</th>
+                                    <th>@user.RecipientPhn</th>
+                                    <th>@user.RecipientAddress</th>
+                                    <th>@user.SendDate</th>
+                                    <th>@user.DeliveryStatus</th>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+                else
+                {
+                    <p>查無資料</p>
+                }
+
+            </div>
+
+        <script>
+                        document.querySelector('.btn-send').addEventListener('click', function (e) {
+                e.preventDefault();
+                // 模擬送出後顯示結果
+                document.getElementById('deliveryResult').style.display = 'block';
+            });
+
+                         document.addEventListener("DOMContentLoaded", function () {
+                var dateInput = document.getElementById("SendDate");
+                if (dateInput) {
+                    var today = new Date();
+                    // 取得本地日期字串 (yyyy-mm-dd)
+                    var yyyy = today.getFullYear();
+                    var mm = String(today.getMonth() + 1).padStart(2, '0');
+                    var dd = String(today.getDate()).padStart(2, '0');
+                    var minDate = yyyy + '-' + mm + '-' + dd;
+                    dateInput.setAttribute('min', minDate);
+
+                    // 防止使用者以 JS/輸入修改（送出前再次檢查）
+                    var form = dateInput.closest('form');
+                    if (form) {
+                        form.addEventListener('submit', function (e) {
+                            if (dateInput.value && dateInput.value < minDate) {
+                                e.preventDefault();
+                                alert('寄件日期不可早於今天 (' + minDate + ')。請重新選擇日期。');
+                                dateInput.focus();
+                            }
+                        });
+                    }
+                }
+            });
+                document.addEventListener('DOMContentLoaded', function () {
+                // 初始化
+                document.querySelectorAll('.input-field').forEach(function (field) {
+                    const input = field.querySelector('input');
+                    const clearBtn = field.querySelector('.clear-btn');
+                    if (!input || !clearBtn) return;
+                    clearBtn.style.display = input.value.trim().length > 0 ? 'block' : 'none';
+                });
+
+                // 監聽輸入事件（動態顯示 / 隱藏 ×）
+                document.addEventListener('input', function (e) {
+                    if (!e.target.matches('.input-field input')) return;
+                    const input = e.target;
+                    const clearBtn = input.closest('.input-field').querySelector('.clear-btn');
+                    if (!clearBtn) return;
+                    clearBtn.style.display = input.value.trim().length > 0 ? 'block' : 'none';
+                });
+
+                // 點擊 × 清除輸入
+                document.addEventListener('click', function (e) {
+                    if (!e.target.matches('.input-field .clear-btn')) return;
+                    e.preventDefault(); // 防止表單提交
+                    const clearBtn = e.target;
+                    const input = clearBtn.closest('.input-field').querySelector('input');
+                    if (!input) return;
+                    input.value = '';
+                    clearBtn.style.display = 'none';
+                    input.focus();
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>
+
+@section scripts{
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/jquery-validation/dist/jquery.validate.js"></script>
+    <script src="~/lib/jquery-validation-unobtrusive/jquery.validate.unobtrusive.js"></script>
+    <script>
+        $.validator.addMethod("senddate", function (value, element, parm){
+            if (!value) return true;
+            var inputDate = new Date(value);
+            var today = new Date();
+
+            inputDate.setHours(0,0,0,0);
+            today.setHours(0,0,0,0);
+
+            return inputDate >= today;
+        }, "寄件日期不可早於今天");
+        
+        $.validator.unobtrusive.adapters.addBool("datecheck");
+    </script>
+}

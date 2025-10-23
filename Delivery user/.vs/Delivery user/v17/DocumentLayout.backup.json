@@ -1,0 +1,37 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\User\\OneDrive\\\u684C\u9762\\Delivery user\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{8F32FC1D-8919-40C9-8EC2-1D6ACDFD4DD6}|Delivery user\\Delivery user.csproj|c:\\users\\user\\onedrive\\\u684C\u9762\\delivery user\\delivery user\\wwwroot\\css\\main.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{8F32FC1D-8919-40C9-8EC2-1D6ACDFD4DD6}|Delivery user\\Delivery user.csproj|solutionrelative:delivery user\\wwwroot\\css\\main.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "main.css",
+              "DocumentMoniker": "C:\\Users\\User\\OneDrive\\\u684C\u9762\\Delivery user\\Delivery user\\wwwroot\\css\\main.css",
+              "RelativeDocumentMoniker": "Delivery user\\wwwroot\\css\\main.css",
+              "ToolTip": "C:\\Users\\User\\OneDrive\\\u684C\u9762\\Delivery user\\Delivery user\\wwwroot\\css\\main.css*",
+              "RelativeToolTip": "Delivery user\\wwwroot\\css\\main.css*",
+              "ViewState": "AgIAAL0AAAAAAAAAAAAAAMoAAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2025-10-23T23:24:02.525Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
