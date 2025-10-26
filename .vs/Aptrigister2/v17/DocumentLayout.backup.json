@@ -1,0 +1,338 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\controllers\\homecontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\shared\\_layout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\shared\\_layout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\shared\\_loginpartial.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\shared\\_loginpartial.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\account\\login.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\controllers\\accountcontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\home\\user.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\home\\user.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\home\\admin.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\home\\admin.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\viewmodels\\loginviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\account\\changepassword.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\account\\changepassword.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\account\\verifyemail.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\account\\verifyemail.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\account\\register.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\account\\register.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\viewmodels\\verifyemailviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\viewmodels\\verifyemailviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\views\\shared\\_accountlayout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\views\\shared\\_accountlayout.cshtml||{40D31677-CBC0-4297-A9EF-89D907823A98}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\wwwroot\\css\\account.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\wwwroot\\css\\account.css||{A5401142-F49D-43DB-90B1-F57BA349E55C}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\viewmodels\\changepasswordviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\viewmodels\\changepasswordviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\viewmodels\\registerviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\viewmodels\\registerviewmodel.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\servises\\seedservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\servises\\seedservice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|d:\\alvin\u7684\u8AB2\\team\\aptrigister2\\aptrigister2\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3BE13951-46C3-4181-A636-7221570540A7}|Aptrigister2\\Aptrigister2.csproj|solutionrelative:aptrigister2\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 9,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:130:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "User.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Home\\User.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Home\\User.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Home\\User.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Home\\User.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-26T00:19:52.583Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "AccountController.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Controllers\\AccountController.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\Controllers\\AccountController.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Controllers\\AccountController.cs",
+              "RelativeToolTip": "Aptrigister2\\Controllers\\AccountController.cs",
+              "ViewState": "AgIAAJAAAAAAAAAAAAAAALEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:34:10.29Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "_Layout.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_Layout.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Shared\\_Layout.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_Layout.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Shared\\_Layout.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABsAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T22:31:39.777Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Admin.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Home\\Admin.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Home\\Admin.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Home\\Admin.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Home\\Admin.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-26T00:16:04.764Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "ChangePassword.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\ChangePassword.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Account\\ChangePassword.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\ChangePassword.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Account\\ChangePassword.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACgAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T23:54:14.71Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Login.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\Login.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Account\\Login.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\Login.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Account\\Login.cshtml",
+              "ViewState": "AgIAABUAAAAAAAAAAAAAACAAAABZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T22:38:11.277Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "HomeController.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Controllers\\HomeController.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\Controllers\\HomeController.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Controllers\\HomeController.cs",
+              "RelativeToolTip": "Aptrigister2\\Controllers\\HomeController.cs",
+              "ViewState": "AgIAAAgAAAAAAAAAAAAUwBUAAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-26T00:20:32.391Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "LoginViewModel.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\LoginViewModel.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\ViewModels\\LoginViewModel.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\LoginViewModel.cs",
+              "RelativeToolTip": "Aptrigister2\\ViewModels\\LoginViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA8AAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:19:52.216Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "_LoginPartial.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_LoginPartial.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Shared\\_LoginPartial.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_LoginPartial.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Shared\\_LoginPartial.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABwAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T22:31:48.124Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "VerifyEmail.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\VerifyEmail.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Account\\VerifyEmail.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\VerifyEmail.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Account\\VerifyEmail.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T23:28:19.791Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Register.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\Register.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Account\\Register.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Account\\Register.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Account\\Register.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAeAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T22:48:05.511Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "VerifyEmailViewModel.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\VerifyEmailViewModel.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\ViewModels\\VerifyEmailViewModel.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\VerifyEmailViewModel.cs",
+              "RelativeToolTip": "Aptrigister2\\ViewModels\\VerifyEmailViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:26:20.896Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "_AccountLayout.cshtml",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_AccountLayout.cshtml",
+              "RelativeDocumentMoniker": "Aptrigister2\\Views\\Shared\\_AccountLayout.cshtml",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Views\\Shared\\_AccountLayout.cshtml",
+              "RelativeToolTip": "Aptrigister2\\Views\\Shared\\_AccountLayout.cshtml",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000759|",
+              "WhenOpened": "2025-10-25T22:35:43.081Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "account.css",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\wwwroot\\css\\account.css",
+              "RelativeDocumentMoniker": "Aptrigister2\\wwwroot\\css\\account.css",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\wwwroot\\css\\account.css",
+              "RelativeToolTip": "Aptrigister2\\wwwroot\\css\\account.css",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAAgAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003000|",
+              "WhenOpened": "2025-10-25T22:36:30.101Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "ChangePasswordViewModel.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\ChangePasswordViewModel.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\ViewModels\\ChangePasswordViewModel.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\ChangePasswordViewModel.cs",
+              "RelativeToolTip": "Aptrigister2\\ViewModels\\ChangePasswordViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAAB1AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:25:40.893Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 15,
+              "Title": "RegisterViewModel.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\RegisterViewModel.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\ViewModels\\RegisterViewModel.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\ViewModels\\RegisterViewModel.cs",
+              "RelativeToolTip": "Aptrigister2\\ViewModels\\RegisterViewModel.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABxAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:26:42.731Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 16,
+              "Title": "SeedService.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Servises\\SeedService.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\Servises\\SeedService.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Servises\\SeedService.cs",
+              "RelativeToolTip": "Aptrigister2\\Servises\\SeedService.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T22:20:12.433Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 17,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Program.cs",
+              "RelativeDocumentMoniker": "Aptrigister2\\Program.cs",
+              "ToolTip": "D:\\ALVIN\u7684\u8AB2\\team\\Aptrigister2\\Aptrigister2\\Program.cs",
+              "RelativeToolTip": "Aptrigister2\\Program.cs",
+              "ViewState": "AgIAAAoAAAAAAAAAAAAAABwAAAAnAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-25T21:17:39.746Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
