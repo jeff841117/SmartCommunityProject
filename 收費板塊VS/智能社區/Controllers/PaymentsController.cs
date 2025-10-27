@@ -4,9 +4,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SmartCommunity.Data;
 using SmartCommunity.Models;
+using System;
 using System.Linq;
 using System.Threading.Tasks;
-using System;
 
 namespace SmartCommunity.Controllers
 {
@@ -36,7 +36,11 @@ namespace SmartCommunity.Controllers
             if (User.IsInRole("Admin")) return RedirectToAction("Index");
 
             var me = await GetCurrentResidentAsync();
-            if (me == null) return Forbid();
+            if (me == null)
+            {
+                TempData["Error"] = "找不到住戶身分，請重新登入。";
+                return RedirectToAction("Index", "Home");
+            }
 
             var list = await _db.Payments
                 .Include(p => p.Bill).ThenInclude(b => b.FeeItem)
@@ -48,33 +52,67 @@ namespace SmartCommunity.Controllers
             return View("MyHistory", list);
         }
 
-        // ★ 住戶：付款（只收 billId + method）
+        // 住戶：付款（只接受自己的帳單）
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Pay(int billId, string method)
+        public async Task<IActionResult> Pay([FromForm] int billId)
         {
-            if (User.IsInRole("Admin")) return BadRequest("管理者請用後台。");
+            // 管理者不得代繳
+            if (User.IsInRole("Admin"))
+            {
+                TempData["Error"] = "管理者無法代替住戶繳費。";
+                return RedirectToAction("Index", "AdminBills");
+            }
 
             var me = await GetCurrentResidentAsync();
-            if (me == null) return Forbid();
-
-            // 只能操作自己的未繳帳單
-            var bill = await _db.Bills
-                .Include(b => b.FeeItem)
-                .FirstOrDefaultAsync(b => b.BillID == billId && b.UserID == me.UserID);
-
-            if (bill == null) return NotFound("找不到帳單。");
-            if (bill.Status == "已繳")
+            if (me == null)
             {
-                TempData["Info"] = "此帳單已繳清。";
+                TempData["Error"] = "找不到住戶身分，請重新登入。";
+                return RedirectToAction("Index", "Home");
+            }
+
+            if (billId <= 0)
+            {
+                TempData["Error"] = "付款參數遺失或不正確。";
                 return RedirectToAction("MyUnpaid", "Bills");
             }
 
-            // 付款方式白名單
-            var allowed = new[] { "現金", "轉帳(ATM)", "LinePay" };
-            if (!allowed.Contains(method))
+            // 從表單讀 method（多一層保險）
+            var methodRaw = (Request.Form["method"].ToString() ?? "").Trim();
+            var method = methodRaw switch
+            {
+                "現金" => "現金",
+                "轉帳(ATM)" or "ATM" or "轉帳" => "轉帳(ATM)",
+                "LinePay" or "LINEPAY" => "LinePay",
+                _ => ""
+            };
+
+            if (string.IsNullOrEmpty(method))
             {
                 TempData["Error"] = "付款方式不正確。";
+                return RedirectToAction("MyUnpaid", "Bills");
+            }
+
+            // 只能操作自己的帳單
+            var bill = await _db.Bills
+                .Include(b => b.FeeItem)
+                .FirstOrDefaultAsync(b => b.BillID == billId);
+
+            if (bill == null)
+            {
+                TempData["Error"] = "找不到該帳單。";
+                return RedirectToAction("MyUnpaid", "Bills");
+            }
+
+            if (bill.UserID != me.UserID)
+            {
+                TempData["Error"] = "您沒有權限支付此帳單。";
+                return RedirectToAction("MyUnpaid", "Bills");
+            }
+
+            if (bill.Status == "已繳")
+            {
+                TempData["Info"] = "此帳單已繳清。";
                 return RedirectToAction("MyUnpaid", "Bills");
             }
 
@@ -84,9 +122,9 @@ namespace SmartCommunity.Controllers
                 _db.Payments.Add(new Payment
                 {
                     BillID = bill.BillID,
-                    Amount = bill.Amount,           // 一律用帳單金額
-                    PaymentMethod = method,         // 付款方式
-                    PaymentDate = DateTime.Now      // 一律用現在時間
+                    Amount = bill.Amount,
+                    PaymentMethod = method,
+                    PaymentDate = DateTime.Now
                 });
 
                 bill.Status = "已繳";
@@ -105,7 +143,7 @@ namespace SmartCommunity.Controllers
             return RedirectToAction("MyUnpaid", "Bills");
         }
 
-        // 管理者總覽
+        // 管理者：付款紀錄總覽（僅檢視）
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Index(int? userId = null)
         {
