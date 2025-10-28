@@ -1,0 +1,29 @@
+﻿@using Microsoft.AspNetCore.Identity
+@inject SignInManager<Users> signInManager;
+
+
+<ul class=" navbar-nav ms-auto align-items-center">
+
+
+    @if (signInManager.IsSignedIn(User))
+{
+   <li class="nav-item">
+        <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+            <button type="submit" class="btn btn-link nav-link text-dark p-0" style="cursor:pointer;">登出</button>
+        </form>        
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <a class=" nav-link text-dark"asp-controller="Account" asp-action="Login">
+                登入
+            </a>
+            </li>
+    <li class="nav-item">
+            <a class=" nav-link text-dark" asp-controller="Account" asp-action="Register">
+                註冊
+            </a>
+        </li>
+    }
+  </ul>  
