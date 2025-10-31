@@ -1,0 +1,247 @@
+/* === 基本頁面設定 === */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Poppins', '微軟正黑體', sans-serif;
+    color: #fff;
+    background: linear-gradient(to bottom, rgba(255,255,255,0.7), rgba(180,180,180,0.5)), url("../images/Searchs_002.png") no-repeat center center fixed;
+    background-size: cover;
+    overflow-y: auto; /* 可垂直滾動，確保所有資料可見 */
+}
+
+/* === 主容器 === */
+.s002 {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    width: 90%;
+    max-width: 1000px;
+    margin: 60px auto;
+    background: rgba(70, 70, 70, 0.7); /* 深色半透明主區塊 */
+    border-radius: 16px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    padding: 40px 50px;
+}
+
+    /* === 標題 === */
+    .s002 legend {
+        font-size: 2.8rem;
+        color: #ffffff;
+        margin-bottom: 30px;
+        font-weight: 600;
+        text-align: center;
+        text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    }
+
+    .s002 fieldset {
+        border: none; /* 移除整個外框線 */
+        margin: 0;
+        padding: 0;
+    }
+
+    /* === 搜尋框區塊 === */
+    .s002 .inner-form {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+
+    .s002 .input-field {
+        position: relative;
+    }
+
+        .s002 .input-field input {
+            height: 60px;
+            width: 250px;
+            border-radius: 6px;
+            border: none;
+            padding: 0 15px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+
+/* 清除按鈕 */
+.close-btn {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: #666;
+    font-size: 18px;
+    cursor: pointer;
+    display: none;
+}
+
+    .close-btn:hover {
+        color: red;
+    }
+
+/* === 搜尋/新增 按鈕 === */
+.btn-search {
+    height: 60px;
+    width: 150px;
+    background-color: #c7904b;
+    border: none;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+    .btn-search:hover {
+        background-color: #a16b3d;
+        transform: scale(1.03);
+    }
+
+/* === 表格外層容器 === */
+.table-container {
+    width: 100%;
+    max-height: 70vh; /* 若資料太多自動出現內部滾動條 */
+    overflow-y: auto;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+
+    /* 滾動條樣式 */
+    .table-container::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: rgba(200, 180, 140, 0.7);
+        border-radius: 10px;
+    }
+
+/* === 表格樣式 === */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    text-align: left;
+    color: #fff;
+}
+
+    /* 表頭 */
+    .table thead {
+        background: rgba(30, 30, 40, 0.9);
+    }
+
+        .table thead th {
+            padding: 14px 18px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #f0c78a;
+            border-bottom: 2px solid #c7904b;
+        }
+
+    /* 表格內容 */
+    .table tbody tr {
+        background: rgba(255, 255, 255, 0.05);
+        transition: background 0.3s ease;
+    }
+
+        .table tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+    .table td {
+        padding: 12px 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+/* 狀態文字 */
+.status-true {
+    color: #5edb6e;
+    font-weight: 600;
+}
+
+.status-false {
+    color: #e26a6a;
+    font-weight: 600;
+}
+
+/* checkbox 樣式 */
+.status-toggle {
+    width: 20px;
+    height: 20px;
+    accent-color: #c7904b;
+    cursor: pointer;
+    transform: scale(1.2);
+}
+
+/* === 更新按鈕 === */
+#updateBtn {
+    display: block;
+    margin: 25px auto 10px auto; /* 上下留距、左右自動置中 */
+    padding: 12px 30px;
+    border: none;
+    border-radius: 8px;
+    background: #c7904b;
+    color: #fff;
+    font-weight: 600;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+    #updateBtn:hover {
+        background: #a16b3d;
+        transform: scale(1.03);
+    }
+
+/* === 響應式調整 === */
+@media (max-width: 768px) {
+    .s002 {
+        width: 95%;
+        padding: 20px;
+    }
+
+        .s002 .input-field input {
+            width: 100%;
+        }
+
+    .table-container {
+        max-height: none; /* 小螢幕允許全部展開 */
+    }
+
+    .table thead {
+        display: none;
+    }
+
+    .table tr {
+        display: block;
+        margin-bottom: 15px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 10px;
+        padding: 10px;
+    }
+
+    .table td {
+        display: flex;
+        justify-content: space-between;
+        border-bottom: none;
+        padding: 8px 10px;
+        font-size: 0.9rem;
+    }
+
+        .table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #c7904b;
+        }
+}

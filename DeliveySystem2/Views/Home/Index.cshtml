@@ -1,0 +1,27 @@
+﻿@{
+    ViewData["Title"] = "會員登入";
+}
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/login.css" />
+</head>
+<body>
+    <div class="login-wrapper">
+        <div class="login-container">
+            <h1>會員登入</h1>
+            <form>
+                <div class="input-row">
+                    <input type="text" placeholder="帳號" required />
+                    <input type="password" placeholder="密碼" required />
+                </div>
+                <button type="submit">登入</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
