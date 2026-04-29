@@ -30,11 +30,10 @@ def main() -> int:
     message.set_content(
         "您好，{user_name}：\n\n"
         "您本次的忘記密碼驗證碼如下：{code}\n"
-        "驗證碼將於 {expired_at} 失效。\n"
+        "驗證碼將於 10 分鐘後失效。\n"
         "如果這不是您本人操作，請忽略這封信，並留意帳號安全。\n".format(
             user_name=payload["UserName"],
             code=payload["VerificationCode"],
-            expired_at=payload["ExpiredAt"],
         ),
         charset="utf-8",
     )
