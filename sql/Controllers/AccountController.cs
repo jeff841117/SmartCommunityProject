@@ -35,6 +35,13 @@ namespace sql.Controllers
             return View(new ForgotPasswordFormViewModel());
         }
 
+        [HttpGet]
+        public JsonResult PasswordResetEmailDebug()
+        {
+            var diagnostic = _accountService.GetPasswordResetEmailDiagnosticInfo();
+            return Json(diagnostic);
+        }
+
         [HttpPost]
         public IActionResult Login(LoginFormViewModel form)
         {

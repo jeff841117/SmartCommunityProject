@@ -24,14 +24,14 @@ def main() -> int:
         return 3
 
     message = EmailMessage()
-    message["Subject"] = "智能社區密碼重設驗證碼"
+    message["Subject"] = "智能社區系統忘記密碼驗證碼"
     message["From"] = sender_email
     message["To"] = payload["Email"]
     message.set_content(
-        "您好 {user_name}，\n\n"
-        "您的密碼重設驗證碼為：{code}\n"
+        "您好，{user_name}：\n\n"
+        "您本次的忘記密碼驗證碼如下：{code}\n"
         "驗證碼將於 {expired_at} 失效。\n"
-        "若這不是您本人操作，請忽略這封信。\n".format(
+        "如果這不是您本人操作，請忽略這封信，並留意帳號安全。\n".format(
             user_name=payload["UserName"],
             code=payload["VerificationCode"],
             expired_at=payload["ExpiredAt"],

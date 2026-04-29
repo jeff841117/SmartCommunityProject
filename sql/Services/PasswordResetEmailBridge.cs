@@ -5,9 +5,8 @@ using System.Text.Json;
 
 namespace sql.Services
 {
-    // PasswordResetEmailBridge 是 C# 與未來 Python 發信流程之間的橋接點。
-    // 預設先走安全 fallback：寫本機 log。
-    // 當設定開啟且寄件參數齊全時，再改成呼叫 Python 腳本。
+    // PasswordResetEmailBridge 負責把 C# 的忘記密碼流程接到 Python 寄信腳本。
+    // 如果 Python / SMTP 有問題，這裡會回退到測試記錄檔，避免整個忘記密碼流程直接中斷。
     public class PasswordResetEmailBridge
     {
         private readonly IWebHostEnvironment _environment;
@@ -32,26 +31,28 @@ namespace sql.Services
 
                 return WriteFallbackLog(
                     request,
-                    "目前未啟用 Python 寄信橋接，已改寫入測試紀錄。");
+                    "目前未啟用 Python 寄信，已改記錄到測試橋接檔案。");
             }
             catch (Exception ex)
             {
+                WriteErrorLog(request, ex);
+
                 if (_options.FallbackToLogWhenUnavailable)
                 {
                     return WriteFallbackLog(
                         request,
-                        $"Python 寄信橋接失敗，已改寫入測試紀錄。原因：{ex.Message}");
+                        $"Python / SMTP 寄信失敗，已改記錄到測試橋接檔案。原因：{ex.Message}");
                 }
 
                 return new PasswordResetEmailSendResult
                 {
                     Success = false,
-                    Message = $"寄信橋接失敗: {ex.Message}"
+                    Message = $"寄信失敗：{ex.Message}"
                 };
             }
         }
 
-        // 測試環境先把寄信請求寫進本機 log。
+        // 測試橋接模式：不真的寄信，只把這次寄信需求寫入 RuntimeLogs。
         private PasswordResetEmailSendResult WriteFallbackLog(
             PasswordResetEmailRequest request,
             string message)
@@ -83,7 +84,7 @@ namespace sql.Services
             };
         }
 
-        // 正式接軌點：透過 Python 腳本處理 SMTP 發信。
+        // 真實模式：呼叫 Python 寄信腳本，由它負責 SMTP 連線與送信。
         private PasswordResetEmailSendResult TrySendWithPython(PasswordResetEmailRequest request)
         {
             var scriptPath = Path.Combine(
@@ -92,13 +93,13 @@ namespace sql.Services
 
             if (!File.Exists(scriptPath))
             {
-                throw new FileNotFoundException($"找不到 Python 寄信腳本: {scriptPath}");
+                throw new FileNotFoundException($"找不到 Python 寄信腳本：{scriptPath}");
             }
 
             if (string.IsNullOrWhiteSpace(_options.SenderEmail) ||
                 string.IsNullOrWhiteSpace(_options.SenderPassword))
             {
-                throw new InvalidOperationException("尚未設定寄信帳號或密碼");
+                throw new InvalidOperationException("未設定寄信帳號或應用程式密碼。");
             }
 
             var runtimeDirectory = Path.Combine(_environment.ContentRootPath, "RuntimeLogs");
@@ -128,7 +129,7 @@ namespace sql.Services
                 using var process = Process.Start(startInfo);
                 if (process == null)
                 {
-                    throw new InvalidOperationException("無法啟動 Python 寄信程序");
+                    throw new InvalidOperationException("無法啟動 Python 寄信程序。");
                 }
 
                 var standardOutput = process.StandardOutput.ReadToEnd();
@@ -138,13 +139,13 @@ namespace sql.Services
                 if (process.ExitCode != 0)
                 {
                     throw new InvalidOperationException(
-                        $"Python 寄信程序失敗。ExitCode={process.ExitCode}，Error={standardError}");
+                        $"Python 寄信程序失敗，ExitCode={process.ExitCode}，Error={standardError}");
                 }
 
                 return new PasswordResetEmailSendResult
                 {
                     Success = true,
-                    Message = "驗證碼已交由 Python 寄信腳本處理",
+                    Message = "驗證碼已透過 Gmail SMTP 寄出。",
                     DebugOutputPath = standardOutput.Trim(),
                     UsedFallback = false
                 };
@@ -156,6 +157,29 @@ namespace sql.Services
                     File.Delete(payloadPath);
                 }
             }
+        }
+
+        // 若 Python / SMTP 失敗，這份錯誤記錄會比前端訊息更容易追查真正原因。
+        private void WriteErrorLog(PasswordResetEmailRequest request, Exception exception)
+        {
+            var logDirectory = Path.Combine(_environment.ContentRootPath, "RuntimeLogs");
+            Directory.CreateDirectory(logDirectory);
+
+            var logPath = Path.Combine(logDirectory, "password-reset-email-errors.jsonl");
+            var payload = new
+            {
+                LoggedAt = DateTime.Now,
+                request.UserId,
+                request.UserName,
+                request.Email,
+                request.VerificationCode,
+                ExceptionType = exception.GetType().FullName,
+                exception.Message,
+                exception.StackTrace
+            };
+
+            var jsonLine = JsonSerializer.Serialize(payload);
+            File.AppendAllText(logPath, jsonLine + Environment.NewLine);
         }
     }
 }
