@@ -1,0 +1,20 @@
+﻿namespace sql.Models
+{
+    // 這份檔案放的是「整個頁面要用到的資料模型」。
+    // 它和 API 回應模型不同，重點不是給前端 AJAX 用，
+    // 而是讓 Razor 頁面在一開始載入時，有一個明確的資料入口。
+    public class EquipmentManagementPageViewModel
+    {
+        public List<Equipment> Equipments { get; set; } = new();
+    }
+
+    public class EquipmentReservationPageViewModel
+    {
+        public List<Equipment> Equipments { get; set; } = new();
+    }
+
+    public class AccountManagementPageViewModel
+    {
+        public List<account> Accounts { get; set; } = new();
+    }
+}

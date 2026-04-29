@@ -1,0 +1,9 @@
+﻿.vs/
+**/bin/
+**/obj/
+*.user
+*.suo
+*.log
+sql/RuntimeLogs/
+sql/appsettings.LocalSecrets.json
+

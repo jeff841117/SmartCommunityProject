@@ -1,0 +1,144 @@
+body {
+    background-color: #f8f9fa;
+    padding: 0;
+    margin: 0;
+}
+
+.header-section {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+}
+
+.form-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 40px;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+    .form-container:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+
+.btn-submit {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 12px;
+    font-size: 18px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    font-weight: 500;
+    margin-top: 10px;
+}
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        color: white;
+    }
+
+.form-group {
+    margin-bottom: 25px;
+    display: flex;
+    align-items: center;
+    min-height: 50px;
+}
+
+    .form-group.row {
+        display: flex;
+        align-items: center;
+        margin-bottom: 25px;
+    }
+
+.form-control {
+    border-radius: 8px;
+    padding: 12px 15px;
+    border: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+    height: auto;
+    font-size: 16px;
+}
+
+    .form-control:focus {
+        border-color: #6a11cb;
+        box-shadow: 0 0 0 0.2rem rgba(106, 17, 203, 0.25);
+        outline: none;
+    }
+
+.form-label {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 0;
+    text-align: right;
+    padding-right: 15px;
+}
+
+/* 確保 Bootstrap 網格系統正確對齊 */
+.col-form-label {
+    padding-top: calc(0.375rem + 1px);
+    padding-bottom: calc(0.375rem + 1px);
+    margin-bottom: 0;
+    font-size: inherit;
+    line-height: 1.5;
+}
+
+.col-sm-2 {
+    flex: 0 0 16.666667%;
+    max-width: 16.666667%;
+}
+
+.col-sm-10 {
+    flex: 0 0 83.333333%;
+    max-width: 83.333333%;
+}
+
+.col-sm-12 {
+    flex: 0 0 100%;
+    max-width: 100%;
+}
+
+/* 響應式設計 */
+@media (max-width: 576px) {
+    .form-container {
+        padding: 20px;
+        margin: 0 15px;
+    }
+
+    .form-group.row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .form-label {
+        text-align: left;
+        padding-right: 0;
+        margin-bottom: 8px;
+    }
+
+    .col-sm-2,
+    .col-sm-10 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+}
+
+/* 標題對齊修正 */
+.display-4 {
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.lead {
+    text-align: center;
+    margin-bottom: 0;
+}
