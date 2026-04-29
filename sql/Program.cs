@@ -41,6 +41,7 @@ builder.Services.AddScoped<EquipmentService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<QueueService>();
+builder.Services.AddScoped<FutureReservationPlanningService>();
 
 // 背景服務：固定時間檢查是否有過期預約需要自動結束。
 builder.Services.AddHostedService<ExpiredReservationCheckerService>();

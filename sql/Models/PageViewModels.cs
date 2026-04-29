@@ -11,6 +11,8 @@
     public class EquipmentReservationPageViewModel
     {
         public List<Equipment> Equipments { get; set; } = new();
+        public int SlotIntervalMinutes { get; set; }
+        public int AdvanceReservationDays { get; set; }
     }
 
     public class AccountManagementPageViewModel

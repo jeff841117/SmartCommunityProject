@@ -14,6 +14,7 @@ namespace sql.Controllers
         private readonly EquipmentService _equipmentService;
         private readonly ReservationService _reservationService;
         private readonly QueueService _queueService;
+        private readonly FutureReservationPlanningService _futureReservationPlanningService;
         private readonly CurrentUserService _currentUserService;
 
         public EquipmentController(
@@ -21,6 +22,7 @@ namespace sql.Controllers
             EquipmentService equipmentService,
             ReservationService reservationService,
             QueueService queueService,
+            FutureReservationPlanningService futureReservationPlanningService,
             CurrentUserService currentUserService)
             : base(currentUserService)
         {
@@ -28,6 +30,7 @@ namespace sql.Controllers
             _equipmentService = equipmentService;
             _reservationService = reservationService;
             _queueService = queueService;
+            _futureReservationPlanningService = futureReservationPlanningService;
             _currentUserService = currentUserService;
         }
 
@@ -343,10 +346,43 @@ namespace sql.Controllers
 
             var viewModel = new EquipmentReservationPageViewModel
             {
-                Equipments = _equipmentService.GetAllEquipments()
+                Equipments = _equipmentService.GetAllEquipments(),
+                SlotIntervalMinutes = _futureReservationPlanningService.GetSlotIntervalMinutes(),
+                AdvanceReservationDays = _futureReservationPlanningService.GetAdvanceReservationDays()
             };
 
             return View(viewModel);
+        }
+
+        // 第二階段的未來預約規劃先從這個入口開始。
+        // 目前回傳的是「可選時段規劃」，還沒有真正建立 Scheduled 預約資料。
+        [HttpGet]
+        public JsonResult GetFutureReservationPlanning(byte equipmentId, string? reservationDate)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
+                {
+                    return Json(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>("請先登入"));
+                }
+
+                DateOnly? parsedDate = null;
+                if (!string.IsNullOrWhiteSpace(reservationDate)
+                    && DateOnly.TryParse(reservationDate, out var date))
+                {
+                    parsedDate = date;
+                }
+
+                var planning = _futureReservationPlanningService.BuildPlanning(equipmentId, parsedDate);
+                return Json(ApiResponseFactory.DataSuccess(planning));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "取得設備 {EquipmentId} 未來預約規劃時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>(
+                    ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
         }
 
         public IActionResult MyReservations()

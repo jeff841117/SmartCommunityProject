@@ -75,7 +75,10 @@
         </div>
     </div>
 
-    <div class="container">
+    <div class="container"
+         id="reservationPageConfig"
+         data-slot-interval="@Model.SlotIntervalMinutes"
+         data-advance-days="@Model.AdvanceReservationDays">
         <div class="row mb-4">
             <div class="col-12">
                 <div class="user-info">
@@ -152,6 +155,44 @@
                                         onclick="makeReservation(@equipment.Id)">
                                     立即預約
                                 </button>
+                                <button class="btn btn-outline-secondary mt-2"
+                                        type="button"
+                                        onclick="toggleFuturePlanner(@equipment.Id)">
+                                    查看未來時段
+                                </button>
+                            </div>
+
+                            <div class="future-planner mt-3" id="future-planner-@equipment.Id" style="display: none;">
+                                <div class="card border-0 bg-light">
+                                    <div class="card-body">
+                                        <h6 class="fw-bold mb-3">未來時段預約規劃</h6>
+                                        <p class="text-muted small mb-2">
+                                            目前先提供 15 分鐘切片的時段規劃入口，
+                                            後續會再接上真正的未來預約建立與排隊規則。
+                                        </p>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-6">
+                                                <label class="form-label mb-1">預約日期</label>
+                                                <input type="date"
+                                                       class="form-control future-date-input"
+                                                       id="future-date-@equipment.Id" />
+                                            </div>
+                                            <div class="col-md-6">
+                                                <button type="button"
+                                                        class="btn btn-outline-primary w-100"
+                                                        onclick="loadFutureReservationPlanning(@equipment.Id)">
+                                                    載入可選時段
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="future-planning-note small text-muted mt-2"
+                                             id="future-note-@equipment.Id"></div>
+                                        <div class="future-slot-list mt-3"
+                                             id="future-slots-@equipment.Id">
+                                            <div class="text-muted small">請先選擇日期並載入時段</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

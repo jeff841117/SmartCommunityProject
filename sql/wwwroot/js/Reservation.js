@@ -2,11 +2,28 @@
 $(document).ready(function () {
     updateUserWelcome();
     refreshAllEquipmentStatus();
+    initializeFutureReservationInputs();
 
     // 每30秒自動更新狀態
     setInterval(refreshAllEquipmentStatus, 30000);
 
 });
+
+function initializeFutureReservationInputs() {
+    const $config = $('#reservationPageConfig');
+    const advanceDays = parseInt($config.data('advance-days') || 7, 10);
+    const today = new Date();
+    const minDate = today.toISOString().split('T')[0];
+    const maxDate = new Date(today.getTime() + advanceDays * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split('T')[0];
+
+    $('.future-date-input').each(function () {
+        $(this).attr('min', minDate);
+        $(this).attr('max', maxDate);
+        $(this).val(minDate);
+    });
+}
 
 // 更新使用者歡迎訊息
 function updateUserWelcome() {
@@ -193,6 +210,79 @@ function checkEquipmentAvailabilityWithTaiwanTime(equipmentId) {
             }
         });
     });
+}
+
+function toggleFuturePlanner(equipmentId) {
+    const $planner = $('#future-planner-' + equipmentId);
+    $planner.toggle();
+}
+
+function loadFutureReservationPlanning(equipmentId) {
+    const reservationDate = $('#future-date-' + equipmentId).val();
+    const $slots = $('#future-slots-' + equipmentId);
+    const $note = $('#future-note-' + equipmentId);
+
+    if (!reservationDate) {
+        showError('請先選擇預約日期');
+        return;
+    }
+
+    $slots.html('<div class="text-muted small">載入時段中...</div>');
+
+    $.ajax({
+        url: '/Equipment/GetFutureReservationPlanning',
+        type: 'GET',
+        data: {
+            equipmentId: equipmentId,
+            reservationDate: reservationDate
+        },
+        success: function (response) {
+            if (!response.success || !response.data) {
+                $slots.html('<div class="text-danger small">時段載入失敗</div>');
+                $note.text(response.message || '無法取得未來時段規劃');
+                return;
+            }
+
+            renderFutureReservationPlanning(equipmentId, response.data);
+        },
+        error: function (xhr, status, error) {
+            $slots.html('<div class="text-danger small">時段載入失敗</div>');
+            $note.text('無法取得未來時段規劃：' + error);
+        }
+    });
+}
+
+function renderFutureReservationPlanning(equipmentId, planning) {
+    const $slots = $('#future-slots-' + equipmentId);
+    const $note = $('#future-note-' + equipmentId);
+
+    $note.text(planning.planningNote || '');
+
+    if (!planning.slots || planning.slots.length === 0) {
+        $slots.html('<div class="text-muted small">目前沒有可規劃的時段</div>');
+        return;
+    }
+
+    const html = planning.slots.map(slot => {
+        const badgeClass = slot.isSelectable ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary';
+        const buttonState = slot.isSelectable
+            ? '<button type="button" class="btn btn-sm btn-outline-primary" disabled>下一階段開放</button>'
+            : '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>不可選</button>';
+
+        return `
+            <div class="d-flex justify-content-between align-items-center border rounded p-2 mb-2">
+                <div>
+                    <div class="fw-semibold">${slot.displayLabel}</div>
+                    <div class="small">
+                        <span class="badge ${badgeClass}">${slot.statusNote}</span>
+                    </div>
+                </div>
+                <div>${buttonState}</div>
+            </div>
+        `;
+    }).join('');
+
+    $slots.html(html);
 }
 function showSuccess(message) {
     $('#successMessage').text(message);
