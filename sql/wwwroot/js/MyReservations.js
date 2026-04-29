@@ -232,6 +232,7 @@
                         const averageUsageTime = safeGetProperty(queue, 'AverageUsageTime', 'averageUsageTime');
                         const queueTime = safeGetProperty(queue, 'QueueTime', 'queueTime');
                         const equipmentId = safeGetProperty(queue, 'EquipmentId', 'equipmentId');
+                        const queueType = safeGetProperty(queue, 'QueueType', 'queueType');
 
                         // 調試時間信息
                         debugTimeInfo(queueTime, `排隊記錄 ${id}`);
@@ -248,6 +249,7 @@
                                         <p class="mb-1"><strong>預計等待:</strong> 約 ${waitTime} 分鐘</p>
                                         <p class="mb-1"><strong>加入時間:</strong> ${formattedQueueTime}</p>
                                         <p class="mb-1"><strong>前方人數:</strong> ${position - 1} 人</p>
+                                        <p class="mb-1"><strong>排隊來源:</strong> ${getQueueTypeText(queueType)}</p>
                                     </div>
                                     <div class="col-md-4 text-end">
                                         <button class="btn btn-outline-warning btn-action" onclick="cancelQueue('${id}')">
@@ -474,6 +476,15 @@
     default: return '';
             }
         }
+
+    function getQueueTypeText(queueType) {
+        switch (parseInt(queueType) || 1) {
+            case 2:
+                return '預約到點後轉排隊';
+            default:
+                return '一般即時排隊';
+        }
+    }
 
     // 結束使用函數
     function endUsage(reservationId) {

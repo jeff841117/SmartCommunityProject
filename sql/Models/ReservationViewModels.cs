@@ -28,6 +28,7 @@ namespace sql.Models
         public DateTime QueueTime { get; set; }
         public int Position { get; set; }
         public int AverageUsageTime { get; set; }
+        public int QueueType { get; set; }
     }
 
     // 歷史記錄資料。

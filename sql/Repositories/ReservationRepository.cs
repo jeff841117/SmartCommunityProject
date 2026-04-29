@@ -330,11 +330,6 @@ namespace sql.Repositories
                 // 這個流程的目的很明確：
                 // 找出所有已超時但狀態還停在使用中的預約，批次改成 Completed。
                 var expiredReservations = GetExpiredReservations(connection);
-                if (!expiredReservations.Any())
-                {
-                    return;
-                }
-
                 foreach (var reservation in expiredReservations)
                 {
                     try
@@ -357,6 +352,10 @@ namespace sql.Repositories
                         Console.WriteLine($"更新過期預約時錯誤 (ID: {reservation.Id}): {ex.Message}");
                     }
                 }
+
+                // 過期預約處理完後，再檢查是否有已到預約時間的 Scheduled 預約。
+                // 這樣背景服務每次跑時，就能一起推進未來預約的狀態流轉。
+                ProcessDueScheduledReservations();
             }
             catch (Exception ex)
             {
@@ -462,7 +461,7 @@ namespace sql.Repositories
                 FROM WaitingQueue wq
                 INNER JOIN Equipment e ON wq.EquipmentId = e.Id
                 WHERE wq.UserId = @UserId
-                ORDER BY wq.Position", connection);
+                ORDER BY COALESCE(wq.QueuePosition, wq.Position)", connection);
 
             cmd.Parameters.AddWithValue("@UserId", userKey);
 
@@ -478,7 +477,10 @@ namespace sql.Repositories
                     UserId = reader.GetString(reader.GetOrdinal("UserId")),
                     QueueTime = reader.GetDateTime(reader.GetOrdinal("QueueTime")),
                     Position = reader.GetInt32(reader.GetOrdinal("Position")),
-                    AverageUsageTime = reader.GetInt16(reader.GetOrdinal("AverageUsageTime"))
+                    AverageUsageTime = reader.GetInt16(reader.GetOrdinal("AverageUsageTime")),
+                    QueueType = reader.IsDBNull(reader.GetOrdinal("QueueType"))
+                        ? 1
+                        : reader.GetInt32(reader.GetOrdinal("QueueType"))
                 });
             }
 
@@ -638,6 +640,14 @@ namespace sql.Repositories
         {
             using var connection = _dbManager.CreateConnection();
             connection.Open();
+            return AddToWaitingQueue(connection, equipmentId, userKey, null, 1);
+        }
+
+        // 這個版本是給第二階段「預約到點轉排隊」使用。
+        // 會同時把 ReservationId / QueueType 寫進去，讓之後排到時能回頭更新同一筆預約。
+        private int AddToWaitingQueue(SqlConnection connection, byte equipmentId, string userKey, int? reservationId, int queueType)
+        {
+            var queueTime = RepositorySqlHelper.GetTaiwanTime();
 
             using var countCmd = new SqlCommand(
                 "SELECT COUNT(*) FROM WaitingQueue WHERE EquipmentId = @EquipmentId",
@@ -646,15 +656,45 @@ namespace sql.Repositories
 
             var queueCount = Convert.ToInt32(countCmd.ExecuteScalar());
             var position = queueCount + 1;
-            var queueTime = RepositorySqlHelper.GetTaiwanTime();
 
-            using var insertCmd = new SqlCommand(
-                "INSERT INTO WaitingQueue (EquipmentId, UserId, QueueTime, Position) VALUES (@EquipmentId, @UserId, @QueueTime, @Position)",
+            using var insertCmd = new SqlCommand(@"
+                INSERT INTO WaitingQueue
+                (
+                    EquipmentId,
+                    UserId,
+                    QueueTime,
+                    Position,
+                    ReservationId,
+                    QueueType,
+                    QueueStatus,
+                    QueuedAt,
+                    QueuePosition,
+                    ExpectedAvailableTime
+                )
+                VALUES
+                (
+                    @EquipmentId,
+                    @UserId,
+                    @QueueTime,
+                    @Position,
+                    @ReservationId,
+                    @QueueType,
+                    @QueueStatus,
+                    @QueuedAt,
+                    @QueuePosition,
+                    @ExpectedAvailableTime
+                )",
                 connection);
             insertCmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
             insertCmd.Parameters.AddWithValue("@UserId", userKey);
             insertCmd.Parameters.AddWithValue("@QueueTime", queueTime);
             insertCmd.Parameters.AddWithValue("@Position", position);
+            insertCmd.Parameters.AddWithValue("@ReservationId", reservationId.HasValue ? reservationId.Value : DBNull.Value);
+            insertCmd.Parameters.AddWithValue("@QueueType", queueType);
+            insertCmd.Parameters.AddWithValue("@QueueStatus", 1);
+            insertCmd.Parameters.AddWithValue("@QueuedAt", queueTime);
+            insertCmd.Parameters.AddWithValue("@QueuePosition", position);
+            insertCmd.Parameters.AddWithValue("@ExpectedAvailableTime", DBNull.Value);
             insertCmd.ExecuteNonQuery();
 
             return position;
@@ -757,6 +797,131 @@ namespace sql.Repositories
             public byte EquipmentId { get; set; }
             public string UserId { get; set; } = string.Empty;
             public short AvailableTime { get; set; }
+        }
+
+        // 這是第二階段「預約到點後流轉」的核心：
+        // 1. 已到預約時間
+        // 2. 如果目前沒有人排隊且設備有空位，就直接轉為使用中
+        // 3. 否則把這筆預約併入排隊尾端，等後續依順位補上
+        private void ProcessDueScheduledReservations()
+        {
+            using var connection = _dbManager.CreateConnection();
+            connection.Open();
+
+            var dueReservations = GetDueScheduledReservations(connection);
+            foreach (var reservation in dueReservations)
+            {
+                var equipment = RepositorySqlHelper.GetEquipmentById(connection, reservation.EquipmentId);
+                if (equipment == null)
+                {
+                    continue;
+                }
+
+                var currentUsers = RepositorySqlHelper.GetCurrentUsers(connection, reservation.EquipmentId);
+                var waitingCount = GetWaitingQueueCount(connection, reservation.EquipmentId);
+
+                if (currentUsers < equipment.MaxUsers && waitingCount == 0)
+                {
+                    PromoteScheduledReservationToInProgress(connection, reservation.Id);
+                    _equipmentStateNotifier.Notify(reservation.EquipmentId);
+                    continue;
+                }
+
+                if (IsReservationAlreadyInQueue(connection, reservation.Id))
+                {
+                    continue;
+                }
+
+                AddToWaitingQueue(connection, reservation.EquipmentId, reservation.UserId, reservation.Id, 2);
+                MarkScheduledReservationAsWaiting(connection, reservation.Id);
+
+                // 併入排隊後立刻嘗試跑一次補位，
+                // 這樣若前面隊列其實已可前進，就不用等下一輪背景服務。
+                _queueProcessingCoordinator.ProcessEquipmentQueue(reservation.EquipmentId);
+            }
+        }
+
+        private static List<DueScheduledReservationInfo> GetDueScheduledReservations(SqlConnection connection)
+        {
+            var reservations = new List<DueScheduledReservationInfo>();
+
+            using var cmd = new SqlCommand(@"
+                SELECT Id, EquipmentId, UserId, ReservedStartTime
+                FROM Reservations
+                WHERE Status = @Status
+                  AND ReservedStartTime IS NOT NULL
+                  AND ReservedStartTime <= @CurrentTime
+                ORDER BY ReservedStartTime, Id", connection);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@CurrentTime", RepositorySqlHelper.GetTaiwanTime());
+
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                reservations.Add(new DueScheduledReservationInfo
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
+                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                    ReservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime"))
+                });
+            }
+
+            return reservations;
+        }
+
+        private static int GetWaitingQueueCount(SqlConnection connection, byte equipmentId)
+        {
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM WaitingQueue WHERE EquipmentId = @EquipmentId",
+                connection);
+            cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
+            return Convert.ToInt32(cmd.ExecuteScalar());
+        }
+
+        private static bool IsReservationAlreadyInQueue(SqlConnection connection, int reservationId)
+        {
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM WaitingQueue WHERE ReservationId = @ReservationId",
+                connection);
+            cmd.Parameters.AddWithValue("@ReservationId", reservationId);
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        private static void PromoteScheduledReservationToInProgress(SqlConnection connection, int reservationId)
+        {
+            var taiwanTime = RepositorySqlHelper.GetTaiwanTime();
+
+            using var cmd = new SqlCommand(@"
+                UPDATE Reservations
+                SET Status = @Status,
+                    StartTime = @StartTime,
+                    ActualStartTime = @ActualStartTime
+                WHERE Id = @Id", connection);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.InProgress);
+            cmd.Parameters.AddWithValue("@StartTime", taiwanTime);
+            cmd.Parameters.AddWithValue("@ActualStartTime", taiwanTime);
+            cmd.Parameters.AddWithValue("@Id", reservationId);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static void MarkScheduledReservationAsWaiting(SqlConnection connection, int reservationId)
+        {
+            using var cmd = new SqlCommand(@"
+                UPDATE Reservations
+                SET Status = @Status
+                WHERE Id = @Id", connection);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Waiting);
+            cmd.Parameters.AddWithValue("@Id", reservationId);
+            cmd.ExecuteNonQuery();
+        }
+
+        private class DueScheduledReservationInfo
+        {
+            public int Id { get; set; }
+            public byte EquipmentId { get; set; }
+            public string UserId { get; set; } = string.Empty;
+            public DateTime ReservedStartTime { get; set; }
         }
     }
 }

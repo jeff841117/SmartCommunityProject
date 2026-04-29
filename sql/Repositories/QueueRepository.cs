@@ -59,20 +59,30 @@ namespace sql.Repositories
                     if (!HasActiveReservationForSameEquipment(connection, equipmentId, nextInQueue.UserId))
                     {
                         var taiwanTime = RepositorySqlHelper.GetTaiwanTime();
-                        var reservation = new Reservation
-                        {
-                            EquipmentId = equipmentId,
-                            UserId = nextInQueue.UserId,
-                            StartTime = taiwanTime,
-                            ReservationTime = taiwanTime,
-                            Status = ReservationStatus.InProgress
-                        };
 
-                        InsertReservation(connection, reservation);
+                        if (nextInQueue.ReservationId.HasValue && nextInQueue.ReservationId.Value > 0)
+                        {
+                            PromoteQueuedReservationToInProgress(connection, nextInQueue.ReservationId.Value, taiwanTime);
+                        }
+                        else
+                        {
+                            var reservation = new Reservation
+                            {
+                                EquipmentId = equipmentId,
+                                UserId = nextInQueue.UserId,
+                                StartTime = taiwanTime,
+                                ReservationTime = taiwanTime,
+                                Status = ReservationStatus.InProgress
+                            };
+
+                            InsertReservation(connection, reservation);
+                        }
+
                         currentUsers++;
                         promoted = true;
                     }
 
+                    MarkQueueEntryConverted(connection, nextInQueue.Id);
                     RemoveFromQueue(connection, nextInQueue.Id);
                     RecalculateQueuePositions(connection, equipmentId);
                     waitingList = GetWaitingQueue(connection, equipmentId);
@@ -128,18 +138,30 @@ namespace sql.Repositories
             connection.Open();
 
             using var checkCmd = new SqlCommand(
-                "SELECT EquipmentId FROM WaitingQueue WHERE Id = @Id AND UserId = @UserId",
+                "SELECT EquipmentId, ReservationId FROM WaitingQueue WHERE Id = @Id AND UserId = @UserId",
                 connection);
             checkCmd.Parameters.AddWithValue("@Id", queueId);
             checkCmd.Parameters.AddWithValue("@UserId", userKey);
 
-            var result = checkCmd.ExecuteScalar();
-            if (result == null)
+            byte? equipmentId = null;
+            int? reservationId = null;
+            using (var reader = checkCmd.ExecuteReader())
+            {
+                if (!reader.Read())
+                {
+                    return false;
+                }
+
+                equipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId"));
+                reservationId = reader.IsDBNull(reader.GetOrdinal("ReservationId"))
+                    ? null
+                    : reader.GetInt32(reader.GetOrdinal("ReservationId"));
+            }
+
+            if (!equipmentId.HasValue)
             {
                 return false;
             }
-
-            var equipmentId = (byte)result;
 
             using var deleteCmd = new SqlCommand(
                 "DELETE FROM WaitingQueue WHERE Id = @Id AND UserId = @UserId",
@@ -153,11 +175,26 @@ namespace sql.Repositories
                 return false;
             }
 
+            // 如果這筆排隊其實是由未來預約轉進來，
+            // 使用者取消排隊時，也要同步把原本的 Reservation 改成取消。
+            if (reservationId.HasValue)
+            {
+                using var cancelReservationCmd = new SqlCommand(@"
+                    UPDATE Reservations
+                    SET Status = @Status,
+                        CancelledAt = @CancelledAt
+                    WHERE Id = @Id", connection);
+                cancelReservationCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Cancelled);
+                cancelReservationCmd.Parameters.AddWithValue("@CancelledAt", RepositorySqlHelper.GetTaiwanTime());
+                cancelReservationCmd.Parameters.AddWithValue("@Id", reservationId.Value);
+                cancelReservationCmd.ExecuteNonQuery();
+            }
+
             // 新手可以把這裡想成：有人離隊後，後面的人順位要往前補。
-            RecalculateQueuePositions(connection, equipmentId);
+            RecalculateQueuePositions(connection, equipmentId.Value);
 
             // 排序更新完後，再檢查這個設備是否有人可以立即補上。
-            ProcessEquipmentQueue(equipmentId);
+            ProcessEquipmentQueue(equipmentId.Value);
             return true;
         }
 
@@ -166,7 +203,7 @@ namespace sql.Repositories
         private static void RecalculateQueuePositions(SqlConnection connection, byte equipmentId)
         {
             using var selectCmd = new SqlCommand(
-                "SELECT Id FROM WaitingQueue WHERE EquipmentId = @EquipmentId ORDER BY QueueTime",
+                "SELECT Id FROM WaitingQueue WHERE EquipmentId = @EquipmentId ORDER BY COALESCE(QueuePosition, Position), QueueTime",
                 connection);
             selectCmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
 
@@ -182,9 +219,10 @@ namespace sql.Repositories
             for (var i = 0; i < queueIds.Count; i++)
             {
                 using var updateCmd = new SqlCommand(
-                    "UPDATE WaitingQueue SET Position = @Position WHERE Id = @Id",
+                    "UPDATE WaitingQueue SET Position = @Position, QueuePosition = @QueuePosition WHERE Id = @Id",
                     connection);
                 updateCmd.Parameters.AddWithValue("@Position", i + 1);
+                updateCmd.Parameters.AddWithValue("@QueuePosition", i + 1);
                 updateCmd.Parameters.AddWithValue("@Id", queueIds[i]);
                 updateCmd.ExecuteNonQuery();
             }
@@ -218,7 +256,7 @@ namespace sql.Repositories
             var queue = new List<WaitingQueue>();
 
             using var cmd = new SqlCommand(
-                "SELECT * FROM WaitingQueue WHERE EquipmentId = @EquipmentId ORDER BY QueueTime",
+                "SELECT * FROM WaitingQueue WHERE EquipmentId = @EquipmentId ORDER BY COALESCE(QueuePosition, Position), QueueTime",
                 connection);
             cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
 
@@ -231,7 +269,16 @@ namespace sql.Repositories
                     EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
                     UserId = reader.GetString(reader.GetOrdinal("UserId")),
                     QueueTime = reader.GetDateTime(reader.GetOrdinal("QueueTime")),
-                    Position = reader.GetInt32(reader.GetOrdinal("Position"))
+                    Position = reader.GetInt32(reader.GetOrdinal("Position")),
+                    ReservationId = reader.IsDBNull(reader.GetOrdinal("ReservationId"))
+                        ? null
+                        : reader.GetInt32(reader.GetOrdinal("ReservationId")),
+                    QueueType = reader.IsDBNull(reader.GetOrdinal("QueueType"))
+                        ? 1
+                        : reader.GetInt32(reader.GetOrdinal("QueueType")),
+                    QueueStatus = reader.IsDBNull(reader.GetOrdinal("QueueStatus"))
+                        ? 1
+                        : reader.GetInt32(reader.GetOrdinal("QueueStatus"))
                 });
             }
 
@@ -256,6 +303,35 @@ namespace sql.Repositories
         private void InsertReservation(SqlConnection connection, Reservation reservation)
         {
             RepositorySqlHelper.InsertReservation(connection, reservation);
+        }
+
+        // 預約到點轉排隊後，輪到這筆資料時不要新增新預約，
+        // 而是把原本那筆 Reservation 接續改成使用中。
+        private static void PromoteQueuedReservationToInProgress(SqlConnection connection, int reservationId, DateTime taiwanTime)
+        {
+            using var cmd = new SqlCommand(@"
+                UPDATE Reservations
+                SET Status = @Status,
+                    StartTime = @StartTime,
+                    ActualStartTime = @ActualStartTime
+                WHERE Id = @Id", connection);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.InProgress);
+            cmd.Parameters.AddWithValue("@StartTime", taiwanTime);
+            cmd.Parameters.AddWithValue("@ActualStartTime", taiwanTime);
+            cmd.Parameters.AddWithValue("@Id", reservationId);
+            cmd.ExecuteNonQuery();
+        }
+
+        private static void MarkQueueEntryConverted(SqlConnection connection, int queueId)
+        {
+            using var cmd = new SqlCommand(@"
+                UPDATE WaitingQueue
+                SET QueueStatus = 2,
+                    ConvertedToInProgressAt = @ConvertedAt
+                WHERE Id = @Id", connection);
+            cmd.Parameters.AddWithValue("@ConvertedAt", RepositorySqlHelper.GetTaiwanTime());
+            cmd.Parameters.AddWithValue("@Id", queueId);
+            cmd.ExecuteNonQuery();
         }
 
         private static void RemoveFromQueue(SqlConnection connection, int queueId)
