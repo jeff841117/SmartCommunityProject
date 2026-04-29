@@ -96,6 +96,8 @@
         console.log("完整的返回數據:", data);
 
     try {
+        displayScheduledReservations(data.scheduledReservations || []);
+
         // 顯示進行中的預約
         displayActiveReservations(data.activeReservations || []);
 
@@ -109,6 +111,53 @@
     showError('載入預約數據時發生錯誤: ' + error.message);
             }
         }
+
+    function displayScheduledReservations(scheduledReservations) {
+        if (scheduledReservations && scheduledReservations.length > 0) {
+            let scheduledHtml = '';
+
+            scheduledReservations.forEach(reservation => {
+                try {
+                    const equipmentName = safeGetProperty(reservation, 'EquipmentName', 'equipmentName');
+                    const reservationTime = safeGetProperty(reservation, 'ReservationTime', 'reservationTime');
+                    const reservedStartTime = safeGetProperty(reservation, 'ReservedStartTime', 'reservedStartTime');
+                    const reservedEndTime = safeGetProperty(reservation, 'ReservedEndTime', 'reservedEndTime');
+                    const durationMinutes = safeGetProperty(reservation, 'DurationMinutes', 'durationMinutes');
+
+                    scheduledHtml += `
+                        <div class="reservation-card">
+                            <div class="row align-items-center">
+                                <div class="col-md-8">
+                                    <h5 class="text-info">${equipmentName}</h5>
+                                    <p class="mb-1"><strong>建立時間:</strong> ${formatDateTime(reservationTime)}</p>
+                                    <p class="mb-1"><strong>預約時段:</strong> ${formatDateTime(reservedStartTime)} - ${formatTimeOnly(reservedEndTime)}</p>
+                                    <p class="mb-1"><strong>使用時長:</strong> ${durationMinutes} 分鐘</p>
+                                    <p class="mb-0"><strong>狀態:</strong> <span class="status-waiting">已預約未開始</span></p>
+                                </div>
+                                <div class="col-md-4 text-end">
+                                    <small class="text-muted d-block mb-2">${formatDate(reservedStartTime)}</small>
+                                    <button class="btn btn-outline-danger btn-action" onclick="cancelReservation(${safeGetProperty(reservation, 'Id', 'id')})">
+                                        取消預約
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error('處理未來預約時錯誤:', error, reservation);
+                    scheduledHtml += `<div class="alert alert-warning">未來預約資料格式錯誤</div>`;
+                }
+            });
+
+            $('#scheduledReservations').html(scheduledHtml);
+        } else {
+            $('#scheduledReservations').html(`
+                <div class="empty-state">
+                    <p>暫無未來預約</p>
+                </div>
+            `);
+        }
+    }
 
     function displayActiveReservations(activeReservations) {
         console.log("進行中的預約數據:", activeReservations);
@@ -395,12 +444,22 @@
     return date.toLocaleDateString('zh-TW');
     }
 
+    function formatTimeOnly(dateTimeStr) {
+        const date = new Date(dateTimeStr);
+        return date.toLocaleTimeString('zh-TW', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+        });
+    }
+
     function getStatusText(status) {
             switch(status) {
                 case 0: return '等待中';
     case 1: return '使用中';
     case 2: return '已完成';
     case 3: return '已取消';
+    case 4: return '已預約未開始';
     default: return '未知';
             }
         }
@@ -411,6 +470,7 @@
     case 1: return 'status-inprogress';
     case 2: return 'status-completed';
     case 3: return 'status-cancelled';
+    case 4: return 'status-waiting';
     default: return '';
             }
         }
@@ -440,6 +500,34 @@
     executeEndUsage(reservationId);
             });
         }
+
+    function cancelReservation(reservationId) {
+        showConfirm('確定要取消這筆未來預約嗎？', function () {
+            showGlobalLoading(true);
+
+            $.ajax({
+                url: '/Equipment/CancelReservation',
+                type: 'POST',
+                data: {
+                    reservationId: reservationId
+                },
+                success: function (response) {
+                    showGlobalLoading(false);
+
+                    if (response.success) {
+                        showSuccess('已取消預約');
+                        loadMyReservations();
+                    } else {
+                        showError('取消預約失敗：' + response.message);
+                    }
+                },
+                error: function (xhr, status, error) {
+                    showGlobalLoading(false);
+                    showError('請求失敗：' + error);
+                }
+            });
+        });
+    }
 
     // 分離實際的 AJAX 調用 在結束使用和取消排隊的成功回調中也觸發排隊檢查
     function executeEndUsage(reservationId) {

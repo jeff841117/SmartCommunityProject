@@ -2,9 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace sql.Models
 {
-    // 這份模型專門服務第二階段的「未來時段預約」功能。
-    // 目前先把頁面與 API 邊界整理好，
-    // 之後真正接資料庫欄位與預約狀態流轉時，就能直接沿用。
+    // 未來時段預約的建立請求。
+    // 這裡只放「畫面送進來」真正需要的欄位，
+    // 不直接把整張 Reservations 表塞進來，避免前端亂帶資料。
     public class FutureReservationRequestViewModel
     {
         [Required(ErrorMessage = "請選擇設備")]
@@ -17,8 +17,8 @@ namespace sql.Models
         public string SelectedSlotStartTime { get; set; } = string.Empty;
     }
 
-    // 單一時段的畫面顯示資料。
-    // 先用明確模型表示，比直接回傳字串陣列更適合後續 API 化。
+    // 單一時段的顯示資料。
+    // 前端會依照 IsSelectable 決定按鈕能不能點。
     public class FutureReservationSlotItem
     {
         public string SlotStartTime { get; set; } = string.Empty;
@@ -28,7 +28,7 @@ namespace sql.Models
         public string StatusNote { get; set; } = string.Empty;
     }
 
-    // 預約頁點選某台設備後，前端會用這個模型渲染可選時段。
+    // 預約頁面載入未來時段時，後端回傳的規劃結果。
     public class FutureReservationPlanningResponse
     {
         public byte EquipmentId { get; set; }

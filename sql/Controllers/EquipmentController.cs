@@ -185,6 +185,28 @@ namespace sql.Controllers
             }
         }
 
+        // 這個入口專門處理未來時段預約。
+        // 和立即預約分開後，之後要補排隊轉換規則會比較安全。
+        [HttpPost]
+        public JsonResult CreateFutureReservation(FutureReservationRequestViewModel form)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                var result = _reservationService.CreateFutureReservation(form, currentUser);
+                return Json(result);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "建立未來時段預約時發生未預期錯誤");
+                return Json(new ReservationResult
+                {
+                    Success = false,
+                    Message = ApiExceptionTranslator.ToUserMessage(e)
+                });
+            }
+        }
+
         [HttpPost]
         public JsonResult CancelReservation(int reservationId)
         {
@@ -354,8 +376,8 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
-        // 第二階段的未來預約規劃先從這個入口開始。
-        // 目前回傳的是「可選時段規劃」，還沒有真正建立 Scheduled 預約資料。
+        // 第二階段的未來預約先從這個規劃入口開始。
+        // 建立流程會另外走 CreateFutureReservation，避免查詢和寫入混在一起。
         [HttpGet]
         public JsonResult GetFutureReservationPlanning(byte equipmentId, string? reservationDate)
         {

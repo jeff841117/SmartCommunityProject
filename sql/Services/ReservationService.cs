@@ -30,6 +30,22 @@ namespace sql.Services
             return _reservationRepository.CreateReservation(equipmentId, currentUser.ReservationUserKey);
         }
 
+        // 未來時段預約和立即預約分開處理，
+        // 這樣後面規則變複雜時，不會把兩種流程混在一起。
+        public ReservationResult CreateFutureReservation(FutureReservationRequestViewModel request, CurrentUser currentUser)
+        {
+            if (!currentUser.IsAuthenticated)
+            {
+                return new ReservationResult
+                {
+                    Success = false,
+                    Message = "請先登入系統"
+                };
+            }
+
+            return _reservationRepository.CreateScheduledReservation(request, currentUser.ReservationUserKey);
+        }
+
         public bool CancelReservation(int reservationId, CurrentUser currentUser)
         {
             if (!currentUser.IsAuthenticated)
@@ -65,6 +81,7 @@ namespace sql.Services
             }
 
             var taiwanTime = GetTaiwanTime();
+            var scheduledReservations = _reservationRepository.GetScheduledReservations(currentUser.ReservationUserKey);
             var activeReservations = _reservationRepository.GetActiveReservations(currentUser.ReservationUserKey);
             var waitingReservations = _reservationRepository.GetWaitingQueues(currentUser.ReservationUserKey);
             var historyReservations = _reservationRepository.GetHistoryReservations(currentUser.ReservationUserKey);
@@ -98,6 +115,7 @@ namespace sql.Services
 
             return new UserReservationsResponse
             {
+                ScheduledReservations = scheduledReservations,
                 ActiveReservations = activeWithRemainingTime,
                 WaitingReservations = waitingReservations,
                 HistoryReservations = historyReservations,

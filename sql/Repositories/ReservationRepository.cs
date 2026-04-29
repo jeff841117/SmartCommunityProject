@@ -105,6 +105,131 @@ namespace sql.Repositories
             }
         }
 
+        // 第二階段真正開始落地「未來時段預約」。
+        // 這裡會建立一筆 Scheduled 預約，而不是立即開始使用。
+        public ReservationResult CreateScheduledReservation(FutureReservationRequestViewModel request, string userKey)
+        {
+            try
+            {
+                var equipment = GetEquipmentById(request.EquipmentId);
+                if (equipment == null)
+                {
+                    return new ReservationResult { Success = false, Message = "設備不存在" };
+                }
+
+                if (!DateOnly.TryParse(request.ReservationDate, out var reservationDate))
+                {
+                    return new ReservationResult { Success = false, Message = "預約日期格式不正確" };
+                }
+
+                if (!TimeOnly.TryParse(request.SelectedSlotStartTime, out var slotStartTime))
+                {
+                    return new ReservationResult { Success = false, Message = "預約時段格式不正確" };
+                }
+
+                var taiwanTime = RepositorySqlHelper.GetTaiwanTime();
+                var reservedStartTime = reservationDate.ToDateTime(slotStartTime);
+                var reservedEndTime = reservedStartTime.AddMinutes(equipment.AvailableTime);
+                var latestStartTime = reservationDate.ToDateTime(TimeOnly.MinValue).Add(equipment.CloseTime).AddMinutes(-equipment.AvailableTime);
+
+                if (reservedStartTime <= taiwanTime)
+                {
+                    return new ReservationResult { Success = false, Message = "未來預約時間必須晚於目前時間" };
+                }
+
+                if (reservedStartTime.TimeOfDay < equipment.OpenTime || reservedStartTime > latestStartTime)
+                {
+                    return new ReservationResult { Success = false, Message = "選擇的時段不在設備可預約範圍內" };
+                }
+
+                if (HasAnyInProgressReservation(userKey))
+                {
+                    return new ReservationResult
+                    {
+                        Success = false,
+                        Message = "您目前已有進行中的預約，請先結束使用後再建立未來預約"
+                    };
+                }
+
+                if (HasScheduledReservationConflict(userKey, reservedStartTime, reservedEndTime))
+                {
+                    return new ReservationResult
+                    {
+                        Success = false,
+                        Message = "您在這個時段已有其他預約，請改選其他時間"
+                    };
+                }
+
+                if (GetScheduledReservationCount(request.EquipmentId, reservedStartTime, reservedEndTime) >= equipment.MaxUsers)
+                {
+                    return new ReservationResult
+                    {
+                        Success = false,
+                        Message = "此時段的預約名額已滿，請改選其他時間"
+                    };
+                }
+
+                using var connection = _dbManager.CreateConnection();
+                connection.Open();
+
+                using var insertCmd = new SqlCommand(@"
+                    INSERT INTO Reservations
+                    (
+                        EquipmentId,
+                        UserId,
+                        StartTime,
+                        EndTime,
+                        ReservationTime,
+                        Status,
+                        CreatedAt,
+                        ReservedStartTime,
+                        ReservedEndTime,
+                        DurationMinutes,
+                        ReservationType
+                    )
+                    VALUES
+                    (
+                        @EquipmentId,
+                        @UserId,
+                        @StartTime,
+                        @EndTime,
+                        @ReservationTime,
+                        @Status,
+                        @CreatedAt,
+                        @ReservedStartTime,
+                        @ReservedEndTime,
+                        @DurationMinutes,
+                        @ReservationType
+                    )", connection);
+
+                insertCmd.Parameters.AddWithValue("@EquipmentId", request.EquipmentId);
+                insertCmd.Parameters.AddWithValue("@UserId", userKey);
+                insertCmd.Parameters.AddWithValue("@StartTime", reservedStartTime);
+                insertCmd.Parameters.AddWithValue("@EndTime", DBNull.Value);
+                insertCmd.Parameters.AddWithValue("@ReservationTime", taiwanTime);
+                insertCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+                insertCmd.Parameters.AddWithValue("@CreatedAt", taiwanTime);
+                insertCmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
+                insertCmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
+                insertCmd.Parameters.AddWithValue("@DurationMinutes", equipment.AvailableTime);
+                insertCmd.Parameters.AddWithValue("@ReservationType", 2);
+                insertCmd.ExecuteNonQuery();
+
+                return new ReservationResult
+                {
+                    Success = true,
+                    Message = "未來時段預約成功",
+                    ScheduledStartTime = reservedStartTime,
+                    ScheduledEndTime = reservedEndTime
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"建立未來時段預約時發生錯誤: {ex.Message}");
+                return new ReservationResult { Success = false, Message = "建立未來預約失敗，請稍後再試" };
+            }
+        }
+
         // 取消預約這一輪已經正式搬到 Repository。
         // 流程是：
         // 1. 先確認這筆預約存在且屬於該使用者
@@ -280,6 +405,53 @@ namespace sql.Repositories
             return activeReservations;
         }
 
+        public List<ScheduledReservationItem> GetScheduledReservations(string userKey)
+        {
+            var scheduledReservations = new List<ScheduledReservationItem>();
+
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT r.Id,
+                       r.EquipmentId,
+                       e.equipmentName,
+                       r.UserId,
+                       r.ReservationTime,
+                       r.ReservedStartTime,
+                       r.ReservedEndTime,
+                       r.DurationMinutes,
+                       r.Status
+                FROM Reservations r
+                INNER JOIN Equipment e ON r.EquipmentId = e.Id
+                WHERE r.UserId = @UserId
+                  AND r.Status = @Status
+                ORDER BY r.ReservedStartTime ASC", connection);
+
+            cmd.Parameters.AddWithValue("@UserId", userKey);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+
+            connection.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                scheduledReservations.Add(new ScheduledReservationItem
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
+                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
+                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                    ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
+                    ReservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime")),
+                    ReservedEndTime = reader.GetDateTime(reader.GetOrdinal("ReservedEndTime")),
+                    DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
+                        ? 0
+                        : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
+                    Status = reader.GetInt32(reader.GetOrdinal("Status"))
+                });
+            }
+
+            return scheduledReservations;
+        }
+
         public List<WaitingReservationItem> GetWaitingQueues(string userKey)
         {
             var waitingQueues = new List<WaitingReservationItem>();
@@ -382,6 +554,65 @@ namespace sql.Repositories
 
             connection.Open();
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // 第二階段規則：若使用者已在其他設備使用中，先不要再建立未來預約。
+        private bool HasAnyInProgressReservation(string userKey)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT COUNT(*)
+                FROM Reservations
+                WHERE UserId = @UserId
+                  AND Status = @Status", connection);
+
+            cmd.Parameters.AddWithValue("@UserId", userKey);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.InProgress);
+
+            connection.Open();
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // 同一個人在相同時間區間內，不應該有互相重疊的未來預約。
+        private bool HasScheduledReservationConflict(string userKey, DateTime reservedStartTime, DateTime reservedEndTime)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT COUNT(*)
+                FROM Reservations
+                WHERE UserId = @UserId
+                  AND Status = @Status
+                  AND ReservedStartTime < @ReservedEndTime
+                  AND ReservedEndTime > @ReservedStartTime", connection);
+
+            cmd.Parameters.AddWithValue("@UserId", userKey);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
+            cmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
+
+            connection.Open();
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // 同一個設備在同一個時段最多只能容納 MaxUsers 筆 Scheduled 預約。
+        private int GetScheduledReservationCount(byte equipmentId, DateTime reservedStartTime, DateTime reservedEndTime)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT COUNT(*)
+                FROM Reservations
+                WHERE EquipmentId = @EquipmentId
+                  AND Status = @Status
+                  AND ReservedStartTime < @ReservedEndTime
+                  AND ReservedEndTime > @ReservedStartTime", connection);
+
+            cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
+            cmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
+
+            connection.Open();
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         // 這個檢查是為了避免同一個人重複插入相同設備的排隊資料。

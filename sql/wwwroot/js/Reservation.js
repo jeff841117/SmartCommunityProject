@@ -266,7 +266,7 @@ function renderFutureReservationPlanning(equipmentId, planning) {
     const html = planning.slots.map(slot => {
         const badgeClass = slot.isSelectable ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary';
         const buttonState = slot.isSelectable
-            ? '<button type="button" class="btn btn-sm btn-outline-primary" disabled>下一階段開放</button>'
+            ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="createFutureReservation(${equipmentId}, '${planning.reservationDate}', '${slot.slotStartTime}')">預約此時段</button>`
             : '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>不可選</button>';
 
         return `
@@ -283,6 +283,49 @@ function renderFutureReservationPlanning(equipmentId, planning) {
     }).join('');
 
     $slots.html(html);
+}
+
+function createFutureReservation(equipmentId, reservationDate, slotStartTime) {
+    const confirmMessage = `確定要預約 ${reservationDate} ${slotStartTime} 的設備時段嗎？`;
+
+    showConfirm(confirmMessage, function () {
+        showLoading(true);
+
+        $.ajax({
+            url: '/Equipment/CreateFutureReservation',
+            type: 'POST',
+            data: {
+                equipmentId: equipmentId,
+                reservationDate: reservationDate,
+                selectedSlotStartTime: slotStartTime
+            },
+            success: function (response) {
+                showLoading(false);
+
+                if (response.success) {
+                    let message = response.message;
+                    if (response.scheduledStartTime && response.scheduledEndTime) {
+                        const start = new Date(response.scheduledStartTime);
+                        const end = new Date(response.scheduledEndTime);
+                        message += '\n\n預約時段：';
+                        message += `\n${start.toLocaleString('zh-TW')} - ${end.toLocaleTimeString('zh-TW', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })}`;
+                    }
+
+                    showSuccess(message);
+                    loadFutureReservationPlanning(equipmentId);
+                } else {
+                    showError(response.message || '建立未來預約失敗');
+                }
+            },
+            error: function (xhr, status, error) {
+                showLoading(false);
+                showError('建立未來預約失敗：' + error);
+            }
+        });
+    });
 }
 function showSuccess(message) {
     $('#successMessage').text(message);

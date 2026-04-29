@@ -2,9 +2,8 @@ using sql.Models;
 
 namespace sql.Services
 {
-    // 這個 Service 專門負責第二階段的「未來時段預約規劃」。
-    // 目前先把可選日期、15 分鐘時段切片、以及今日過去時段過濾整理好，
-    // 後續真正建立 Scheduled 預約時，就能直接接在這一層之後。
+    // 這個 Service 先專心負責「規劃可選時段」。
+    // 真正建立 Scheduled 預約資料會交給 ReservationService / ReservationRepository。
     public class FutureReservationPlanningService
     {
         public const int DefaultSlotIntervalMinutes = 15;
@@ -35,8 +34,8 @@ namespace sql.Services
                 throw new InvalidOperationException("設備不存在");
             }
 
-            var targetDate = reservationDate ?? DateOnly.FromDateTime(DateTime.Today);
-            var currentTaiwanTime = DateTime.Now;
+            var currentTaiwanTime = GetTaiwanTime();
+            var targetDate = reservationDate ?? DateOnly.FromDateTime(currentTaiwanTime);
             var targetDateTime = targetDate.ToDateTime(TimeOnly.MinValue);
 
             var response = new FutureReservationPlanningResponse
@@ -48,7 +47,7 @@ namespace sql.Services
                 AvailableTimeMinutes = equipment.AvailableTime,
                 OpenTime = equipment.OpenTime.ToString(@"hh\:mm"),
                 CloseTime = equipment.CloseTime.ToString(@"hh\:mm"),
-                PlanningNote = "目前先提供時段規劃與前端選擇入口；真正的未來預約建立、衝突檢查與到點轉排隊規則，會在第二階段後續流程落地。"
+                PlanningNote = "目前已開放未來時段預約建立。若預約時段到達時設備仍無空位，後續將依規則轉入排隊。"
             };
 
             var openDateTime = targetDateTime.Add(equipment.OpenTime);
@@ -67,11 +66,24 @@ namespace sql.Services
                     SlotEndTime = slotEndTime.ToString("HH:mm"),
                     DisplayLabel = $"{slotTime:HH:mm} - {slotEndTime:HH:mm}",
                     IsSelectable = !isPastTimeToday,
-                    StatusNote = isPastTimeToday ? "今日已過時段" : "可規劃預約"
+                    StatusNote = isPastTimeToday ? "此時段已過，無法選擇" : "可建立未來預約"
                 });
             }
 
             return response;
+        }
+
+        private static DateTime GetTaiwanTime()
+        {
+            try
+            {
+                var taiwanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
+                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taiwanTimeZone);
+            }
+            catch
+            {
+                return DateTime.UtcNow.AddHours(8);
+            }
         }
     }
 }
