@@ -1,0 +1,61 @@
+﻿.table-container {
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.header-section {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+}
+
+.table-actions {
+    white-space: nowrap;
+}
+
+.add-equipment-btn {
+    background-color: #0d6efd;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+    display: inline-block;
+    text-decoration: none;
+}
+
+.add-equipment-btn:hover {
+    background-color: #0b5ed7;
+    color: white;
+    box-shadow: 0 6px 8px rgba(13, 110, 253, 0.3);
+    transform: translateY(-2px);
+}
+
+.add-equipment-btn:active {
+    background-color: #0a58ca;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4);
+    transform: translateY(0);
+}
+
+.button-container {
+    display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.editable-field {
+    position: relative;
+}
+
+.field-edit {
+    width: 100%;
+}
+
+.table-actions {
+    white-space: nowrap;
+}

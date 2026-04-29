@@ -1,0 +1,193 @@
+﻿@{
+    ViewData["Title"] = "設備預約";
+    List<Equipment> equipments = ViewBag.equipments ?? new List<Equipment>();
+    Layout = "";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/Reservation.css" rel="stylesheet" asp-append-version="true">
+</head>
+<!-- 成功訊息 Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">✓ 操作成功</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="successMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">確定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 錯誤訊息 Modal -->
+<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">✗ 操作失敗</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">確定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 確認 Modal -->
+<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">⚠️ 確認操作</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-warning" id="confirmAction">確定</button>
+            </div>
+        </div>
+    </div>
+</div>
+<body>
+    <div class="header-section">
+        <div class="container">
+            <h1 class="display-4 fw-bold">設備預約系統</h1>
+            <p class="lead">預約使用設備，即時查看使用狀態和排隊情況</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- 使用者資訊 -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="user-info">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h5 class="mb-1">歡迎使用設備預約系統</h5>
+                            <p class="mb-0" id="userWelcome">載入使用者資訊...</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <a href="/Equipment/MyReservations" class="btn btn-light me-2">我的預約</a>
+                            <a href="/Account/Logout" class="btn btn-outline-light">登出</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速操作 -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <button class="btn btn-outline-primary btn-refresh-all" onclick="refreshAllEquipmentStatus()">
+                    🔄 更新所有設備狀態
+                </button>
+            </div>
+        </div>
+
+        <!-- 設備列表 -->
+        <div class="row" id="equipmentList">
+            @foreach (var equipment in equipments)
+            {
+                <div class="col-md-6 col-lg-4 equipment-item" data-equipment-id="@equipment.Id">
+                    <div class="equipment-card">
+                        <div class="equipment-header">
+                            <h5 class="mb-0">@equipment.equipmentName</h5>
+                        </div>
+                        <div class="equipment-body">
+                            <div class="equipment-info">
+                                <p class="mb-1"><strong>使用上限:</strong> @equipment.MaxUsers 人</p>
+                                <p class="mb-1"><strong>使用時間:</strong> @equipment.AvailableTime 分鐘</p>
+                                <p class="mb-1"><strong>開放時間:</strong> @equipment.OpenTime.ToString(@"hh\:mm") - @equipment.CloseTime.ToString(@"hh\:mm")</p>
+                            </div>
+
+                            <div class="real-time-status mt-3">
+                                <p class="mb-1">
+                                    <strong>當前狀態:</strong>
+                                    <span class="status-text" id="status-@equipment.Id">檢查中...</span>
+                                </p>
+                                <p class="mb-1">
+                                    <strong>使用人數:</strong>
+                                    <span class="current-users" id="users-@equipment.Id">-</span>/@equipment.MaxUsers
+                                </p>
+                                <p class="mb-1">
+                                    <strong>排隊人數:</strong>
+                                    <span class="queue-count" id="queue-@equipment.Id">-</span>人
+                                </p>
+                            </div>
+
+                            <!-- 排隊信息 -->
+                           <div class="queue-info" id="queue-info-@equipment.Id" style="display: none;">
+                                <div class="queue-details">
+                                    <p class="mb-1"><strong>當前排隊:</strong> <span class="queue-count" id="queue-@equipment.Id">-</span>人</p>
+                                    <p class="mb-1"><strong>預計等待:</strong> <span class="wait-time" id="wait-time-@equipment.Id">-</span>分鐘</p>
+                                    <p class="mb-1"><strong>最快可用:</strong> <span class="available-time" id="available-time-@equipment.Id">-</span></p>
+                                    <div class="queue-progress mt-2">
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-warning" id="queue-progress-@equipment.Id" style="width: 0%"></div>
+                                        </div>
+                                        <small class="text-muted" id="queue-position-@equipment.Id">排隊進度</small>
+                                    </div>
+                                </div>
+                               
+                            </div>
+
+                            <!-- 操作按鈕 -->
+                            <div class="equipment-actions mt-3">
+                                <button class="btn btn-primary reservation-btn"
+                                        data-equipment-id="@equipment.Id"
+                                        id="reserve-btn-@equipment.Id"
+                                        onclick="makeReservation(@equipment.Id)">
+                                    立即預約
+                                </button>
+                               
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <!-- 沒有設備的提示 -->
+        @if (!equipments.Any())
+        {
+            <div class="alert alert-warning text-center" role="alert">
+                <h4>暫無可用設備</h4>
+                <p>請聯繫管理員添加設備</p>
+            </div>
+        }
+    </div>
+
+    <!-- 載入動畫 -->
+    <div class="loading-spinner" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">載入中...</span>
+        </div>
+        <p class="mt-2">處理中...</p>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="~/js/Reservation.js" asp-append-version="true"></script>
+    
+</body>
+</html>

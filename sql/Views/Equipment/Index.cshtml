@@ -1,0 +1,104 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+    List<Equipment> equipments = ViewBag.equipments;
+    Layout = "";
+}
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/indexEquipment.css" rel="stylesheet" asp-append-version="true">
+</head>
+<body>
+    <div class="header-section">
+        <div class="container">
+            <h1 class="display-4 fw-bold">設備管理系統</h1>
+            <p class="lead">管理所有設備的詳細信息和可用性</p>
+        </div>
+    </div>
+    <div class="container">
+        <div class="button-container">
+            <a href="/Equipment/addEquipment" class="add-equipment-btn">新增設備</a>
+        </div>
+        <div class="button-container">
+            <a href="/Equipment/Reservation" class="add-equipment-btn">查看預約狀態</a>
+        </div>
+        <div class="button-container">
+            <a href="/Home/Index" class="add-equipment-btn">查看帳號</a>
+        </div>
+        <div class="table-container">
+            <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                    <tr>
+                        <th width="50">
+                            <input type="checkbox" id="selectAll">
+                        </th>
+                        <th>編號</th>
+                        <th>設備名稱</th>
+                        <th>同時上限人數</th>
+                        <th>可使用時間</th>
+                        <th>開放時間</th>
+                        <th>關閉時間</th>
+                        <th width="150">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (Equipment user in equipments)
+                    {
+                        <tr data-id="@user.Id">
+                            <td>
+                                <input type="checkbox" class="row-checkbox">
+                            </td>
+                            <td>@user.Id</td>
+                            <td class="editable-field">
+                                <span class="field-display" data-field="equipmentName">@user.equipmentName</span>
+                                <input type="text" class="field-edit form-control" value="@user.equipmentName" style="display: none;" data-field="equipmentName" />
+                            </td>
+                            <td class="editable-field">
+                                <span class="field-display" data-field="MaxUsers">@user.MaxUsers</span>
+                                <input type="number" class="field-edit form-control" value="@user.MaxUsers" style="display: none;" data-field="MaxUsers" />
+                            </td>
+                            <td class="editable-field">
+                                <span class="field-display" data-field="AvailableTime">@user.AvailableTime</span>
+                                <input type="number" class="field-edit form-control" value="@user.AvailableTime" style="display: none;" data-field="AvailableTime" />
+                            </td>
+                            <td class="editable-field">
+                                <span class="field-display" data-field="OpenTime">@user.OpenTime.ToString(@"hh\:mm")</span>
+                                <input type="time" class="field-edit form-control" value="@user.OpenTime.ToString(@"hh\:mm")" style="display: none;" data-field="OpenTime" />
+                            </td>
+                            <td class="editable-field">
+                                <span class="field-display" data-field="CloseTime">@user.CloseTime.ToString(@"hh\:mm")</span>
+                                <input type="time" class="field-edit form-control" value="@user.CloseTime.ToString(@"hh\:mm")" style="display: none;" data-field="CloseTime" />
+                            </td>
+                            <td class="table-actions">
+                                <button class="btn btn-sm btn-outline-primary edit-btn">編輯</button>
+                                <button class="btn btn-sm btn-outline-success save-btn" style="display: none;">確定</button>
+                                <button class="btn btn-sm btn-outline-secondary cancel-btn" style="display: none;">取消</button>
+                                <form method="post" action="/Equipment/deleteEquipment" style="display: inline;">
+                                    <input type="hidden" name="id" value="@user.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            onclick="return confirm('確定要刪除設備 @user.equipmentName 嗎？')">
+                                        刪除
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle with Popper -->
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/indexEquipment.js" asp-append-version="true"></script>
+       
+</body>
+</html>

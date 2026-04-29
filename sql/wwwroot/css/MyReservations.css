@@ -1,0 +1,93 @@
+﻿.header-section {
+    background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+    color: white;
+    padding: 2rem 0;
+    margin-bottom: 2rem;
+    border-radius: 0 0 20px 20px;
+}
+
+.reservation-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.reservation-card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+}
+
+.status-waiting {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+.status-inprogress {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-completed {
+    color: #6c757d;
+    font-weight: bold;
+}
+
+.status-cancelled {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.time-remaining {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #dc3545;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6c757d;
+}
+
+.btn-action {
+    margin-top: 10px;
+}
+.add-equipment-btn {
+    background-color: #0d6efd;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(13, 110, 253, 0.2);
+    display: inline-block;
+    text-decoration: none;
+}
+
+.add-equipment-btn:hover {
+    background-color: #0b5ed7;
+    color: white;
+    box-shadow: 0 6px 8px rgba(13, 110, 253, 0.3);
+    transform: translateY(-2px);
+}
+
+.add-equipment-btn:active {
+    background-color: #0a58ca;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.4);
+    transform: translateY(0);
+}
+
+.button-container {
+    display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
