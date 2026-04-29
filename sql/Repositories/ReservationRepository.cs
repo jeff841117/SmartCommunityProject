@@ -64,7 +64,17 @@ namespace sql.Repositories
                 }
 
                 var currentUsers = GetCurrentUsers(equipmentId);
-                if (currentUsers < equipment.MaxUsers)
+                var futureReservedCapacityCount = GetReservedCapacityCount(
+                    equipmentId,
+                    taiwanTime,
+                    taiwanTime.AddMinutes(equipment.AvailableTime));
+
+                // 立即預約不能只看「現在還有沒有空位」。
+                // 如果這次立即使用會侵占後面已經被未來預約保留的容量，
+                // 就必須改走排隊，而不是直接開始使用。
+                var effectiveCurrentCapacity = Math.Max(0, equipment.MaxUsers - futureReservedCapacityCount);
+
+                if (currentUsers < effectiveCurrentCapacity)
                 {
                     // 還有名額時，直接建立使用中的預約。
                     var reservation = new Reservation
@@ -86,13 +96,18 @@ namespace sql.Repositories
                 }
 
                 // 沒有名額時，就改成加入排隊並回傳預估等待資訊。
+                // 這裡包含兩種情況：
+                // 1. 設備當下已滿
+                // 2. 雖然當下有空位，但後面已有未來預約先保留了容量
                 var queuePosition = AddToWaitingQueue(equipmentId, userKey);
                 var estimatedWaitTime = CalculateEstimatedWaitTime(equipment, queuePosition);
 
                 return new ReservationResult
                 {
                     Success = true,
-                    Message = "設備已滿，已加入排隊",
+                    Message = futureReservedCapacityCount > 0 && currentUsers < equipment.MaxUsers
+                        ? "此設備後續時段已有未來預約保留名額，已改為加入排隊"
+                        : "設備已滿，已加入排隊",
                     WaitingPosition = queuePosition,
                     EstimatedWaitTime = estimatedWaitTime,
                     ExpectedStartTime = taiwanTime.AddMinutes(estimatedWaitTime)
@@ -160,12 +175,26 @@ namespace sql.Repositories
                     };
                 }
 
-                if (GetScheduledReservationCount(request.EquipmentId, reservedStartTime, reservedEndTime) >= equipment.MaxUsers)
+                var forecast = BuildFutureReservationForecast(equipment, reservedStartTime, reservedEndTime);
+                if (forecast.HasReservedCapacityConflict)
                 {
                     return new ReservationResult
                     {
                         Success = false,
-                        Message = "此時段的預約名額已滿，請改選其他時間"
+                        Message = forecast.Message
+                    };
+                }
+
+                if (forecast.QueueExpected && !request.ConfirmQueueExpected)
+                {
+                    return new ReservationResult
+                    {
+                        Success = false,
+                        RequiresConfirmation = true,
+                        QueueExpected = true,
+                        Message = forecast.Message,
+                        ScheduledStartTime = reservedStartTime,
+                        ScheduledEndTime = reservedEndTime
                     };
                 }
 
@@ -207,18 +236,25 @@ namespace sql.Repositories
                 insertCmd.Parameters.AddWithValue("@StartTime", reservedStartTime);
                 insertCmd.Parameters.AddWithValue("@EndTime", DBNull.Value);
                 insertCmd.Parameters.AddWithValue("@ReservationTime", taiwanTime);
-                insertCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+                insertCmd.Parameters.AddWithValue(
+                    "@Status",
+                    (int)(forecast.QueueExpected
+                        ? ReservationStatus.ScheduledQueueExpected
+                        : ReservationStatus.Scheduled));
                 insertCmd.Parameters.AddWithValue("@CreatedAt", taiwanTime);
                 insertCmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
                 insertCmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
                 insertCmd.Parameters.AddWithValue("@DurationMinutes", equipment.AvailableTime);
-                insertCmd.Parameters.AddWithValue("@ReservationType", 2);
+                insertCmd.Parameters.AddWithValue("@ReservationType", forecast.QueueExpected ? 3 : 2);
                 insertCmd.ExecuteNonQuery();
 
                 return new ReservationResult
                 {
                     Success = true,
-                    Message = "未來時段預約成功",
+                    Message = forecast.QueueExpected
+                        ? "未來時段預約已建立，但依目前推算到時仍可能需要排隊，系統會到點時自動併入排隊尾端"
+                        : "未來時段預約成功",
+                    QueueExpected = forecast.QueueExpected,
                     ScheduledStartTime = reservedStartTime,
                     ScheduledEndTime = reservedEndTime
                 };
@@ -353,7 +389,7 @@ namespace sql.Repositories
                     }
                 }
 
-                // 過期預約處理完後，再檢查是否有已到預約時間的 Scheduled 預約。
+                // 過期預約處理完後，再檢查是否有已到預約時間的 Scheduled / ScheduledQueueExpected 預約。
                 // 這樣背景服務每次跑時，就能一起推進未來預約的狀態流轉。
                 ProcessDueScheduledReservations();
             }
@@ -422,11 +458,12 @@ namespace sql.Repositories
                 FROM Reservations r
                 INNER JOIN Equipment e ON r.EquipmentId = e.Id
                 WHERE r.UserId = @UserId
-                  AND r.Status = @Status
+                  AND r.Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)
                 ORDER BY r.ReservedStartTime ASC", connection);
 
             cmd.Parameters.AddWithValue("@UserId", userKey);
-            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
 
             connection.Open();
             using var reader = cmd.ExecuteReader();
@@ -538,6 +575,29 @@ namespace sql.Repositories
             return RepositorySqlHelper.GetCurrentUsers(connection, equipmentId);
         }
 
+        // 這個方法會回傳某個時段已被未來預約保留掉的名額數。
+        // 後面立即預約與未來預約都會用到它，避免不同流程各算一套。
+        public int GetReservedCapacityCount(byte equipmentId, DateTime reservedStartTime, DateTime reservedEndTime)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT COUNT(*)
+                FROM Reservations
+                WHERE EquipmentId = @EquipmentId
+                  AND Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)
+                  AND ReservedStartTime < @ReservedEndTime
+                  AND ReservedEndTime > @ReservedStartTime", connection);
+
+            cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
+            cmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
+            cmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
+            cmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
+
+            connection.Open();
+            return Convert.ToInt32(cmd.ExecuteScalar());
+        }
+
         // 這個檢查對應目前舊系統的規則：
         // 先只擋掉同設備、而且仍在使用中的重複預約。
         private bool HasActiveReservationForSameEquipment(byte equipmentId, string userKey)
@@ -583,38 +643,18 @@ namespace sql.Repositories
                 SELECT COUNT(*)
                 FROM Reservations
                 WHERE UserId = @UserId
-                  AND Status = @Status
+                  AND Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)
                   AND ReservedStartTime < @ReservedEndTime
                   AND ReservedEndTime > @ReservedStartTime", connection);
 
             cmd.Parameters.AddWithValue("@UserId", userKey);
-            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
             cmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
             cmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
 
             connection.Open();
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
-        }
-
-        // 同一個設備在同一個時段最多只能容納 MaxUsers 筆 Scheduled 預約。
-        private int GetScheduledReservationCount(byte equipmentId, DateTime reservedStartTime, DateTime reservedEndTime)
-        {
-            using var connection = _dbManager.CreateConnection();
-            using var cmd = new SqlCommand(@"
-                SELECT COUNT(*)
-                FROM Reservations
-                WHERE EquipmentId = @EquipmentId
-                  AND Status = @Status
-                  AND ReservedStartTime < @ReservedEndTime
-                  AND ReservedEndTime > @ReservedStartTime", connection);
-
-            cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
-            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
-            cmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
-            cmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
-
-            connection.Open();
-            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         // 這個檢查是為了避免同一個人重複插入相同設備的排隊資料。
@@ -632,6 +672,81 @@ namespace sql.Repositories
 
             connection.Open();
             return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // 這裡把未來預約建立前的推算邏輯集中在 Repository，
+        // 讓真正寫入資料時也會用同一套規則，不會只在畫面查詢時看起來正確。
+        private FutureReservationForecast BuildFutureReservationForecast(
+            Equipment equipment,
+            DateTime reservedStartTime,
+            DateTime reservedEndTime)
+        {
+            var currentTaiwanTime = RepositorySqlHelper.GetTaiwanTime();
+            var minutesUntilStart = Math.Max(0, (int)(reservedStartTime - currentTaiwanTime).TotalMinutes);
+
+            var currentUsers = GetCurrentUsers(equipment.Id);
+            var currentWaitingCount = GetCurrentWaitingCount(equipment.Id);
+            var reservedCapacityCount = GetReservedCapacityCount(equipment.Id, reservedStartTime, reservedEndTime);
+
+            if (reservedCapacityCount >= equipment.MaxUsers)
+            {
+                return new FutureReservationForecast
+                {
+                    HasReservedCapacityConflict = true,
+                    ReservedCapacityCount = reservedCapacityCount,
+                    ForecastWaitingCount = currentWaitingCount,
+                    Message = "此時段的保留名額已滿，請改選其他時間"
+                };
+            }
+
+            var effectiveCapacityAtTarget = Math.Max(0, equipment.MaxUsers - reservedCapacityCount);
+            if (effectiveCapacityAtTarget <= 0)
+            {
+                return new FutureReservationForecast
+                {
+                    HasReservedCapacityConflict = true,
+                    ReservedCapacityCount = reservedCapacityCount,
+                    ForecastWaitingCount = currentWaitingCount,
+                    Message = "此時段已無可再分配的容量，請改選其他時間"
+                };
+            }
+
+            var availableStartsNow = Math.Max(0, equipment.MaxUsers - currentUsers);
+            var fullCyclesBeforeSlot = equipment.AvailableTime <= 0
+                ? 0
+                : minutesUntilStart / equipment.AvailableTime;
+            var theoreticalStartsBeforeSlot = availableStartsNow + (fullCyclesBeforeSlot * equipment.MaxUsers);
+            var forecastWaitingCount = Math.Max(0, currentWaitingCount - theoreticalStartsBeforeSlot);
+
+            if (forecastWaitingCount >= effectiveCapacityAtTarget)
+            {
+                return new FutureReservationForecast
+                {
+                    QueueExpected = true,
+                    ReservedCapacityCount = reservedCapacityCount,
+                    ForecastWaitingCount = forecastWaitingCount,
+                    Message = $"依目前隊列推算，到這個時段時前面可能仍有 {forecastWaitingCount} 人在等待。若仍要預約，系統會在你確認後建立預約，並在到點時排入隊尾。"
+                };
+            }
+
+            return new FutureReservationForecast
+            {
+                ReservedCapacityCount = reservedCapacityCount,
+                ForecastWaitingCount = forecastWaitingCount,
+                Message = $"此時段可預約，目前已保留名額 {reservedCapacityCount}/{equipment.MaxUsers}。"
+            };
+        }
+
+        private int GetCurrentWaitingCount(byte equipmentId)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(
+                "SELECT COUNT(*) FROM WaitingQueue WHERE EquipmentId = @EquipmentId",
+                connection);
+
+            cmd.Parameters.AddWithValue("@EquipmentId", equipmentId);
+            connection.Open();
+            return Convert.ToInt32(cmd.ExecuteScalar());
         }
 
         // 加入排隊的邏輯目前很適合先獨立成小方法，
@@ -848,11 +963,12 @@ namespace sql.Repositories
             using var cmd = new SqlCommand(@"
                 SELECT Id, EquipmentId, UserId, ReservedStartTime
                 FROM Reservations
-                WHERE Status = @Status
+                WHERE Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)
                   AND ReservedStartTime IS NOT NULL
                   AND ReservedStartTime <= @CurrentTime
                 ORDER BY ReservedStartTime, Id", connection);
-            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
             cmd.Parameters.AddWithValue("@CurrentTime", RepositorySqlHelper.GetTaiwanTime());
 
             using var reader = cmd.ExecuteReader();

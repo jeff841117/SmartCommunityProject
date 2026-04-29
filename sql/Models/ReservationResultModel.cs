@@ -12,5 +12,7 @@ namespace sql.Models
         public DateTime? ExpectedStartTime { get; set; } // 預計開始時間
         public DateTime? ScheduledStartTime { get; set; } // 未來預約的開始時間
         public DateTime? ScheduledEndTime { get; set; } // 未來預約的結束時間
+        public bool RequiresConfirmation { get; set; } // 是否需要使用者再次確認
+        public bool QueueExpected { get; set; } // 系統是否推算到時仍需排隊
     }
 }

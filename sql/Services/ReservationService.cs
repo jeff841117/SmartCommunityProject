@@ -145,7 +145,12 @@ namespace sql.Services
             var isInOperatingHours = currentTimeOfDay >= equipment.OpenTime &&
                                      currentTimeOfDay <= equipment.CloseTime;
             var currentUsers = _reservationRepository.GetCurrentUsers(equipmentId);
-            var isWithinCapacity = currentUsers < equipment.MaxUsers;
+            var reservedCapacityCount = _reservationRepository.GetReservedCapacityCount(
+                equipmentId,
+                taiwanTime,
+                taiwanTime.AddMinutes(equipment.AvailableTime));
+            var effectiveCapacity = Math.Max(0, equipment.MaxUsers - reservedCapacityCount);
+            var isWithinCapacity = currentUsers < effectiveCapacity;
 
             string message;
             if (!isInOperatingHours)
@@ -154,7 +159,9 @@ namespace sql.Services
             }
             else if (!isWithinCapacity)
             {
-                message = "設備已滿，點擊預約將加入排隊";
+                message = reservedCapacityCount > 0 && currentUsers < equipment.MaxUsers
+                    ? "後續時段已有未來預約保留名額，現在建立將改為加入排隊"
+                    : "設備已滿，點擊預約將加入排隊";
             }
             else
             {

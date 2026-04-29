@@ -265,8 +265,22 @@ function renderFutureReservationPlanning(equipmentId, planning) {
 
     const html = planning.slots.map(slot => {
         const badgeClass = slot.isSelectable ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary';
+        const forecastDetails = [];
+
+        if (slot.reservedCapacityCount > 0) {
+            forecastDetails.push(`已保留名額 ${slot.reservedCapacityCount}`);
+        }
+
+        if (slot.forecastWaitingCount > 0) {
+            forecastDetails.push(`推算前方待排 ${slot.forecastWaitingCount} 人`);
+        }
+
+        const forecastHtml = forecastDetails.length > 0
+            ? `<div class="small text-muted mt-1">${forecastDetails.join('，')}</div>`
+            : '';
+
         const buttonState = slot.isSelectable
-            ? `<button type="button" class="btn btn-sm btn-outline-primary" onclick="createFutureReservation(${equipmentId}, '${planning.reservationDate}', '${slot.slotStartTime}')">預約此時段</button>`
+            ? `<button type="button" class="btn btn-sm ${slot.requiresQueueConfirmation ? 'btn-outline-warning' : 'btn-outline-primary'}" onclick="createFutureReservation(${equipmentId}, '${planning.reservationDate}', '${slot.slotStartTime}', ${slot.requiresQueueConfirmation})">${slot.requiresQueueConfirmation ? '確認預約排隊' : '預約此時段'}</button>`
             : '<button type="button" class="btn btn-sm btn-outline-secondary" disabled>不可選</button>';
 
         return `
@@ -276,6 +290,7 @@ function renderFutureReservationPlanning(equipmentId, planning) {
                     <div class="small">
                         <span class="badge ${badgeClass}">${slot.statusNote}</span>
                     </div>
+                    ${forecastHtml}
                 </div>
                 <div>${buttonState}</div>
             </div>
@@ -285,46 +300,61 @@ function renderFutureReservationPlanning(equipmentId, planning) {
     $slots.html(html);
 }
 
-function createFutureReservation(equipmentId, reservationDate, slotStartTime) {
-    const confirmMessage = `確定要預約 ${reservationDate} ${slotStartTime} 的設備時段嗎？`;
+function createFutureReservation(equipmentId, reservationDate, slotStartTime, requiresQueueConfirmation = false) {
+    const confirmMessage = requiresQueueConfirmation
+        ? `系統推算到 ${reservationDate} ${slotStartTime} 時，前面仍可能有人排隊。\n\n若你繼續建立，系統會先為你保留這個時段的預約，並在到點時視為預約排隊排入尾端。\n\n確定仍要建立嗎？`
+        : `確定要預約 ${reservationDate} ${slotStartTime} 的設備時段嗎？`;
 
     showConfirm(confirmMessage, function () {
-        showLoading(true);
+        submitFutureReservation(equipmentId, reservationDate, slotStartTime, requiresQueueConfirmation);
+    });
+}
 
-        $.ajax({
-            url: '/Equipment/CreateFutureReservation',
-            type: 'POST',
-            data: {
-                equipmentId: equipmentId,
-                reservationDate: reservationDate,
-                selectedSlotStartTime: slotStartTime
-            },
-            success: function (response) {
-                showLoading(false);
+function submitFutureReservation(equipmentId, reservationDate, slotStartTime, confirmQueueExpected) {
+    showLoading(true);
 
-                if (response.success) {
-                    let message = response.message;
-                    if (response.scheduledStartTime && response.scheduledEndTime) {
-                        const start = new Date(response.scheduledStartTime);
-                        const end = new Date(response.scheduledEndTime);
-                        message += '\n\n預約時段：';
-                        message += `\n${start.toLocaleString('zh-TW')} - ${end.toLocaleTimeString('zh-TW', {
-                            hour: '2-digit',
-                            minute: '2-digit'
-                        })}`;
-                    }
+    $.ajax({
+        url: '/Equipment/CreateFutureReservation',
+        type: 'POST',
+        data: {
+            equipmentId: equipmentId,
+            reservationDate: reservationDate,
+            selectedSlotStartTime: slotStartTime,
+            confirmQueueExpected: confirmQueueExpected
+        },
+        success: function (response) {
+            showLoading(false);
 
-                    showSuccess(message);
-                    loadFutureReservationPlanning(equipmentId);
-                } else {
-                    showError(response.message || '建立未來預約失敗');
+            if (response.success) {
+                let message = response.message;
+                if (response.scheduledStartTime && response.scheduledEndTime) {
+                    const start = new Date(response.scheduledStartTime);
+                    const end = new Date(response.scheduledEndTime);
+                    message += '\n\n預約時段：';
+                    message += `\n${start.toLocaleString('zh-TW')} - ${end.toLocaleTimeString('zh-TW', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}`;
                 }
-            },
-            error: function (xhr, status, error) {
-                showLoading(false);
-                showError('建立未來預約失敗：' + error);
+
+                showSuccess(message);
+                loadFutureReservationPlanning(equipmentId);
+                return;
             }
-        });
+
+            if (response.requiresConfirmation && response.queueExpected) {
+                showConfirm(`${response.message}\n\n確定仍要建立這筆未來預約嗎？`, function () {
+                    submitFutureReservation(equipmentId, reservationDate, slotStartTime, true);
+                });
+                return;
+            }
+
+            showError(response.message || '建立未來預約失敗');
+        },
+        error: function (xhr, status, error) {
+            showLoading(false);
+            showError('建立未來預約失敗：' + error);
+        }
     });
 }
 function showSuccess(message) {

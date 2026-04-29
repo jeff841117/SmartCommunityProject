@@ -26,6 +26,7 @@ namespace sql.Models
         InProgress = 1, // 使用中
         Completed = 2,  // 已完成
         Cancelled = 3,  // 已取消
-        Scheduled = 4   // 已預約但尚未開始
+        Scheduled = 4,  // 已預約但尚未開始
+        ScheduledQueueExpected = 5 // 已建立未來預約，但系統預估到時仍需排隊
     }
 }
