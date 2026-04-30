@@ -356,6 +356,52 @@ namespace sql.Repositories
             return true;
         }
 
+        // 管理者強制結束使用時，不需要比對預約擁有者，
+        // 但仍然只允許針對「使用中」的資料執行，避免誤傷其他狀態。
+        public bool ForceEndUsage(int reservationId, int? managerUserId)
+        {
+            using var connection = _dbManager.CreateConnection();
+            connection.Open();
+
+            using var checkCmd = new SqlCommand(
+                "SELECT EquipmentId FROM Reservations WHERE Id = @Id AND Status = @Status",
+                connection);
+            checkCmd.Parameters.AddWithValue("@Id", reservationId);
+            checkCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.InProgress);
+
+            var result = checkCmd.ExecuteScalar();
+            if (result == null)
+            {
+                return false;
+            }
+
+            var equipmentId = (byte)result;
+
+            using var updateCmd = new SqlCommand(@"
+                UPDATE Reservations
+                SET Status = @Status,
+                    EndTime = @EndTime,
+                    ActualEndTime = @ActualEndTime,
+                    EndedByType = @EndedByType,
+                    EndedByUserId = @EndedByUserId
+                WHERE Id = @Id", connection);
+            updateCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Completed);
+            updateCmd.Parameters.AddWithValue("@EndTime", RepositorySqlHelper.GetTaiwanTime());
+            updateCmd.Parameters.AddWithValue("@ActualEndTime", RepositorySqlHelper.GetTaiwanTime());
+            updateCmd.Parameters.AddWithValue("@EndedByType", 2);
+            updateCmd.Parameters.AddWithValue("@EndedByUserId", managerUserId.HasValue ? (object)managerUserId.Value : DBNull.Value);
+            updateCmd.Parameters.AddWithValue("@Id", reservationId);
+
+            var rowsAffected = updateCmd.ExecuteNonQuery();
+            if (rowsAffected <= 0)
+            {
+                return false;
+            }
+
+            _queueProcessingCoordinator.ProcessEquipmentQueue(equipmentId);
+            return true;
+        }
+
         public void AutoCompleteExpiredReservations()
         {
             try
@@ -703,6 +749,36 @@ namespace sql.Repositories
             }
 
             return waitingReservations;
+        }
+
+        public EquipmentReservationChainResponse GetEquipmentReservationChain(byte equipmentId)
+        {
+            var equipment = GetEquipmentById(equipmentId);
+            if (equipment == null)
+            {
+                return new EquipmentReservationChainResponse
+                {
+                    EquipmentId = equipmentId
+                };
+            }
+
+            return new EquipmentReservationChainResponse
+            {
+                EquipmentId = equipmentId,
+                EquipmentName = equipment.equipmentName,
+                ScheduledReservations = GetAllScheduledReservations()
+                    .Where(r => r.EquipmentId == equipmentId)
+                    .OrderBy(r => r.ReservedStartTime)
+                    .ToList(),
+                ActiveReservations = GetAllActiveReservations()
+                    .Where(r => r.EquipmentId == equipmentId)
+                    .OrderBy(r => r.StartTime)
+                    .ToList(),
+                WaitingReservations = GetAllWaitingReservations()
+                    .Where(r => r.EquipmentId == equipmentId)
+                    .OrderBy(r => r.Position)
+                    .ToList()
+            };
         }
 
         // 這個方法會回傳某個時段已被未來預約保留掉的名額數。

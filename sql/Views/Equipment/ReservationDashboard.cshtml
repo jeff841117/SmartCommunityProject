@@ -17,7 +17,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="fw-bold mb-1">預約與排隊總覽</h1>
-                <p class="text-muted mb-0">後台查看目前所有未來預約、使用中與排隊中的狀態</p>
+                <p class="text-muted mb-0">管理者可在這裡檢查未來預約、使用中與排隊中的整體狀況</p>
             </div>
             <div class="text-end">
                 <a href="/Equipment/Index" class="btn btn-outline-secondary">返回設備管理</a>
@@ -41,6 +41,7 @@
                                     <th>預約時段</th>
                                     <th>狀態</th>
                                     <th>建立時間</th>
+                                    <th>查看設備鏈</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -56,6 +57,13 @@
                                             </span>
                                         </td>
                                         <td>@reservation.ReservationTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    type="button"
+                                                    onclick="loadEquipmentChain(@reservation.EquipmentId)">
+                                                查看
+                                            </button>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -85,6 +93,7 @@
                                     <th>開始時間</th>
                                     <th>剩餘時間</th>
                                     <th>狀態</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -96,6 +105,13 @@
                                         <td>@reservation.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td>@reservation.RemainingTime 分鐘</td>
                                         <td><span class="badge bg-primary">@reservation.StatusText</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    type="button"
+                                                    onclick="forceEndUsage(@reservation.Id)">
+                                                強制結束使用
+                                            </button>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -125,6 +141,7 @@
                                     <th>順位</th>
                                     <th>加入時間</th>
                                     <th>排隊來源</th>
+                                    <th>查看設備鏈</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -136,6 +153,13 @@
                                         <td>第 @queue.Position 位</td>
                                         <td>@queue.QueueTime.ToString("yyyy-MM-dd HH:mm")</td>
                                         <td>@queue.QueueTypeText</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    type="button"
+                                                    onclick="loadEquipmentChain(@queue.EquipmentId)">
+                                                查看
+                                            </button>
+                                        </td>
                                     </tr>
                                 }
                             </tbody>
@@ -149,5 +173,106 @@
             </div>
         </div>
     </div>
+
+    <div class="modal fade" id="equipmentChainModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="equipmentChainTitle">設備預約鏈</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="equipmentChainBody">
+                    <div class="text-muted">載入中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function forceEndUsage(reservationId) {
+            if (!confirm('確定要由管理者強制結束這筆使用中預約嗎？')) {
+                return;
+            }
+
+            $.post('/Equipment/ForceEndUsage', { reservationId: reservationId })
+                .done(function (response) {
+                    if (response.success) {
+                        alert(response.message);
+                        window.location.reload();
+                        return;
+                    }
+
+                    alert(response.message || '強制結束失敗');
+                })
+                .fail(function () {
+                    alert('強制結束失敗，請稍後再試');
+                });
+        }
+
+        function loadEquipmentChain(equipmentId) {
+            $.get('/Equipment/GetEquipmentReservationChain', { equipmentId: equipmentId })
+                .done(function (response) {
+                    if (!response.success || !response.data) {
+                        alert(response.message || '無法載入設備預約鏈');
+                        return;
+                    }
+
+                    renderEquipmentChain(response.data);
+                    const modal = new bootstrap.Modal(document.getElementById('equipmentChainModal'));
+                    modal.show();
+                })
+                .fail(function () {
+                    alert('無法載入設備預約鏈');
+                });
+        }
+
+        function renderEquipmentChain(chain) {
+            $('#equipmentChainTitle').text(`${chain.equipmentName} 的預約／排隊鏈`);
+
+            const scheduledRows = (chain.scheduledReservations || []).map(item => `
+                <tr>
+                    <td>${item.userId}</td>
+                    <td>${item.reservedStartTime}</td>
+                    <td>${item.reservedEndTime}</td>
+                    <td>${item.statusText}</td>
+                </tr>
+            `).join('');
+
+            const activeRows = (chain.activeReservations || []).map(item => `
+                <tr>
+                    <td>${item.userId}</td>
+                    <td>${item.startTime}</td>
+                    <td>${item.remainingTime} 分鐘</td>
+                    <td>${item.statusText}</td>
+                </tr>
+            `).join('');
+
+            const waitingRows = (chain.waitingReservations || []).map(item => `
+                <tr>
+                    <td>${item.userId}</td>
+                    <td>第 ${item.position} 位</td>
+                    <td>${item.queueTypeText}</td>
+                    <td>${item.queueTime}</td>
+                </tr>
+            `).join('');
+
+            $('#equipmentChainBody').html(`
+                <div class="mb-4">
+                    <h6>未來預約</h6>
+                    ${scheduledRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>結束</th><th>狀態</th></tr></thead><tbody>${scheduledRows}</tbody></table>` : '<div class="text-muted">目前沒有未來預約。</div>'}
+                </div>
+                <div class="mb-4">
+                    <h6>使用中</h6>
+                    ${activeRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>` : '<div class="text-muted">目前沒有使用中資料。</div>'}
+                </div>
+                <div>
+                    <h6>排隊中</h6>
+                    ${waitingRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>來源</th><th>加入時間</th></tr></thead><tbody>${waitingRows}</tbody></table>` : '<div class="text-muted">目前沒有排隊資料。</div>'}
+                </div>
+            `);
+        }
+    </script>
 </body>
 </html>

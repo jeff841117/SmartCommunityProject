@@ -85,4 +85,13 @@ namespace sql.Models
         public List<WaitingReservationItem> WaitingReservations { get; set; } = new();
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
+
+    public class EquipmentReservationChainResponse
+    {
+        public byte EquipmentId { get; set; }
+        public string EquipmentName { get; set; } = string.Empty;
+        public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
+        public List<ActiveReservationItem> ActiveReservations { get; set; } = new();
+        public List<WaitingReservationItem> WaitingReservations { get; set; } = new();
+    }
 }

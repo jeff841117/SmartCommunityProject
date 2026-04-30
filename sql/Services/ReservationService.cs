@@ -66,6 +66,16 @@ namespace sql.Services
             return _reservationRepository.EndUsage(reservationId, currentUser.ReservationUserKey);
         }
 
+        public bool ForceEndUsage(int reservationId, CurrentUser currentUser)
+        {
+            if (!currentUser.IsManager)
+            {
+                return false;
+            }
+
+            return _reservationRepository.ForceEndUsage(reservationId, currentUser.UserId);
+        }
+
         // 背景服務與手動清理都會用到這個方法。
         public void AutoCompleteExpiredReservations()
         {
@@ -154,6 +164,27 @@ namespace sql.Services
                 WaitingReservations = _reservationRepository.GetAllWaitingReservations(),
                 ServerTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
             };
+        }
+
+        public EquipmentReservationChainResponse GetEquipmentReservationChain(byte equipmentId)
+        {
+            var chain = _reservationRepository.GetEquipmentReservationChain(equipmentId);
+
+            chain.ActiveReservations = chain.ActiveReservations
+                .Select(r =>
+                {
+                    r.RemainingTime = CalculateRemainingTimeTaiwan(r.StartTime, r.AvailableTime);
+                    r.StatusText = string.IsNullOrWhiteSpace(r.StatusText)
+                        ? ReservationDisplayHelper.GetStatusText(r.Status)
+                        : r.StatusText;
+                    r.StatusCssClass = string.IsNullOrWhiteSpace(r.StatusCssClass)
+                        ? ReservationDisplayHelper.GetStatusCssClass(r.Status)
+                        : r.StatusCssClass;
+                    return r;
+                })
+                .ToList();
+
+            return chain;
         }
 
         // 預約前的快速檢查：這裡不會真的建立預約，

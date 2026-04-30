@@ -66,6 +66,27 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
+        [HttpGet]
+        public JsonResult GetEquipmentReservationChain(byte equipmentId)
+        {
+            try
+            {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.DataFailure<EquipmentReservationChainResponse>("您沒有管理員權限"));
+                }
+
+                var chain = _reservationService.GetEquipmentReservationChain(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(chain));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "取得設備 {EquipmentId} 預約鏈資訊時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<EquipmentReservationChainResponse>(
+                    ApiExceptionTranslator.ToUserMessage(ex, ex.Message)));
+            }
+        }
+
         public IActionResult addEquipment()
         {
             var accessRedirect = EnsureManagerRedirect();
@@ -266,6 +287,29 @@ namespace sql.Controllers
             {
                 _logger.LogError(e, "結束設備使用時發生錯誤");
                 return Json(ApiResponseFactory.OperationFailure("結束使用失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ForceEndUsage(int reservationId)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _reservationService.ForceEndUsage(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者強制結束使用")
+                    : ApiResponseFactory.OperationFailure("強制結束失敗，請確認該預約是否仍在使用中"));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者強制結束使用時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
             }
         }
 
