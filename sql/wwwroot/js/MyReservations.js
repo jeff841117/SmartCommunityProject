@@ -123,6 +123,9 @@
                     const reservedStartTime = safeGetProperty(reservation, 'ReservedStartTime', 'reservedStartTime');
                     const reservedEndTime = safeGetProperty(reservation, 'ReservedEndTime', 'reservedEndTime');
                     const durationMinutes = safeGetProperty(reservation, 'DurationMinutes', 'durationMinutes');
+                    const status = parseInt(safeGetProperty(reservation, 'Status', 'status')) || 0;
+                    const statusText = safeGetProperty(reservation, 'StatusText', 'statusText') || getStatusText(status);
+                    const statusClass = safeGetProperty(reservation, 'StatusCssClass', 'statusCssClass') || getStatusClass(status);
 
                     scheduledHtml += `
                         <div class="reservation-card">
@@ -132,7 +135,7 @@
                                     <p class="mb-1"><strong>建立時間:</strong> ${formatDateTime(reservationTime)}</p>
                                     <p class="mb-1"><strong>預約時段:</strong> ${formatDateTime(reservedStartTime)} - ${formatTimeOnly(reservedEndTime)}</p>
                                     <p class="mb-1"><strong>使用時長:</strong> ${durationMinutes} 分鐘</p>
-                                    <p class="mb-0"><strong>狀態:</strong> <span class="status-waiting">已預約未開始</span></p>
+                                    <p class="mb-0"><strong>狀態:</strong> <span class="${statusClass}">${statusText}</span></p>
                                 </div>
                                 <div class="col-md-4 text-end">
                                     <small class="text-muted d-block mb-2">${formatDate(reservedStartTime)}</small>
@@ -233,6 +236,7 @@
                         const queueTime = safeGetProperty(queue, 'QueueTime', 'queueTime');
                         const equipmentId = safeGetProperty(queue, 'EquipmentId', 'equipmentId');
                         const queueType = safeGetProperty(queue, 'QueueType', 'queueType');
+                        const queueTypeText = safeGetProperty(queue, 'QueueTypeText', 'queueTypeText') || getQueueTypeText(queueType);
 
                         // 調試時間信息
                         debugTimeInfo(queueTime, `排隊記錄 ${id}`);
@@ -249,7 +253,7 @@
                                         <p class="mb-1"><strong>預計等待:</strong> 約 ${waitTime} 分鐘</p>
                                         <p class="mb-1"><strong>加入時間:</strong> ${formattedQueueTime}</p>
                                         <p class="mb-1"><strong>前方人數:</strong> ${position - 1} 人</p>
-                                        <p class="mb-1"><strong>排隊來源:</strong> ${getQueueTypeText(queueType)}</p>
+                                        <p class="mb-1"><strong>排隊來源:</strong> ${queueTypeText}</p>
                                     </div>
                                     <div class="col-md-4 text-end">
                                         <button class="btn btn-outline-warning btn-action" onclick="cancelQueue('${id}')">
@@ -286,8 +290,8 @@
     const endTime = safeGetProperty(reservation, 'EndTime', 'endTime');
     const status = safeGetProperty(reservation, 'Status', 'status');
 
-    const statusText = getStatusText(status);
-    const statusClass = getStatusClass(status);
+    const statusText = safeGetProperty(reservation, 'StatusText', 'statusText') || getStatusText(status);
+    const statusClass = safeGetProperty(reservation, 'StatusCssClass', 'statusCssClass') || getStatusClass(status);
 
     historyHtml += `
     <div class="reservation-card">
@@ -462,6 +466,7 @@
     case 2: return '已完成';
     case 3: return '已取消';
     case 4: return '已預約未開始';
+    case 5: return '已預約，預估到點仍需排隊';
     default: return '未知';
             }
         }
@@ -472,7 +477,8 @@
     case 1: return 'status-inprogress';
     case 2: return 'status-completed';
     case 3: return 'status-cancelled';
-    case 4: return 'status-waiting';
+    case 4: return 'status-scheduled';
+    case 5: return 'status-queue-expected';
     default: return '';
             }
         }

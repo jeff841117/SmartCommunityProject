@@ -16,6 +16,8 @@ namespace sql.Models
         public DateTime ReservationTime { get; set; }
         public int Status { get; set; }
         public int RemainingTime { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+        public string StatusCssClass { get; set; } = string.Empty;
     }
 
     // 排隊中的資料。
@@ -29,6 +31,7 @@ namespace sql.Models
         public int Position { get; set; }
         public int AverageUsageTime { get; set; }
         public int QueueType { get; set; }
+        public string QueueTypeText { get; set; } = string.Empty;
     }
 
     // 歷史記錄資料。
@@ -42,5 +45,7 @@ namespace sql.Models
         public DateTime? EndTime { get; set; }
         public DateTime ReservationTime { get; set; }
         public int Status { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+        public string StatusCssClass { get; set; } = string.Empty;
     }
 }

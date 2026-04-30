@@ -109,7 +109,13 @@ namespace sql.Services
                     AvailableTime = r.AvailableTime,
                     ReservationTime = r.ReservationTime,
                     Status = r.Status,
-                    RemainingTime = remainingTime
+                    RemainingTime = remainingTime,
+                    StatusText = string.IsNullOrWhiteSpace(r.StatusText)
+                        ? ReservationDisplayHelper.GetStatusText(r.Status)
+                        : r.StatusText,
+                    StatusCssClass = string.IsNullOrWhiteSpace(r.StatusCssClass)
+                        ? ReservationDisplayHelper.GetStatusCssClass(r.Status)
+                        : r.StatusCssClass
                 };
             }).ToList();
 
@@ -119,6 +125,33 @@ namespace sql.Services
                 ActiveReservations = activeWithRemainingTime,
                 WaitingReservations = waitingReservations,
                 HistoryReservations = historyReservations,
+                ServerTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
+            };
+        }
+
+        public ReservationDashboardResponse GetReservationDashboard()
+        {
+            var taiwanTime = GetTaiwanTime();
+            var activeReservations = _reservationRepository.GetAllActiveReservations()
+                .Select(r =>
+                {
+                    var remainingTime = CalculateRemainingTimeTaiwan(r.StartTime, r.AvailableTime);
+                    r.RemainingTime = remainingTime;
+                    r.StatusText = string.IsNullOrWhiteSpace(r.StatusText)
+                        ? ReservationDisplayHelper.GetStatusText(r.Status)
+                        : r.StatusText;
+                    r.StatusCssClass = string.IsNullOrWhiteSpace(r.StatusCssClass)
+                        ? ReservationDisplayHelper.GetStatusCssClass(r.Status)
+                        : r.StatusCssClass;
+                    return r;
+                })
+                .ToList();
+
+            return new ReservationDashboardResponse
+            {
+                ScheduledReservations = _reservationRepository.GetAllScheduledReservations(),
+                ActiveReservations = activeReservations,
+                WaitingReservations = _reservationRepository.GetAllWaitingReservations(),
                 ServerTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
             };
         }

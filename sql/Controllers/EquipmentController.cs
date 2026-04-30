@@ -50,6 +50,22 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
+        public IActionResult ReservationDashboard()
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var viewModel = new ReservationManagementPageViewModel
+            {
+                Dashboard = _reservationService.GetReservationDashboard()
+            };
+
+            return View(viewModel);
+        }
+
         public IActionResult addEquipment()
         {
             var accessRedirect = EnsureManagerRedirect();

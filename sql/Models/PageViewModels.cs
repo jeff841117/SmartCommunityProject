@@ -19,4 +19,9 @@
     {
         public List<account> Accounts { get; set; } = new();
     }
+
+    public class ReservationManagementPageViewModel
+    {
+        public ReservationDashboardResponse Dashboard { get; set; } = new();
+    }
 }

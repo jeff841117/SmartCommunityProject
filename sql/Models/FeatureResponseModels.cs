@@ -24,6 +24,8 @@ namespace sql.Models
         public DateTime ReservedEndTime { get; set; }
         public int DurationMinutes { get; set; }
         public int Status { get; set; }
+        public string StatusText { get; set; } = string.Empty;
+        public string StatusCssClass { get; set; } = string.Empty;
     }
 
     // 預約頁在點「立即預約」前，會先用這份資料判斷：
@@ -73,5 +75,14 @@ namespace sql.Models
     {
         public string UserId { get; set; } = string.Empty;
         public int Position { get; set; }
+    }
+
+    // 管理者總覽頁會用到這份資料，讓後台一次看到目前的預約主狀態。
+    public class ReservationDashboardResponse
+    {
+        public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
+        public List<ActiveReservationItem> ActiveReservations { get; set; } = new();
+        public List<WaitingReservationItem> WaitingReservations { get; set; } = new();
+        public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 }

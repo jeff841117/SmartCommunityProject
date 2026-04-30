@@ -481,7 +481,9 @@ namespace sql.Repositories
                     DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
                         ? 0
                         : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
-                    Status = reader.GetInt32(reader.GetOrdinal("Status"))
+                    Status = reader.GetInt32(reader.GetOrdinal("Status")),
+                    StatusText = ReservationDisplayHelper.GetStatusText(reader.GetInt32(reader.GetOrdinal("Status"))),
+                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(reader.GetInt32(reader.GetOrdinal("Status")))
                 });
             }
 
@@ -517,7 +519,11 @@ namespace sql.Repositories
                     AverageUsageTime = reader.GetInt16(reader.GetOrdinal("AverageUsageTime")),
                     QueueType = reader.IsDBNull(reader.GetOrdinal("QueueType"))
                         ? 1
-                        : reader.GetInt32(reader.GetOrdinal("QueueType"))
+                        : reader.GetInt32(reader.GetOrdinal("QueueType")),
+                    QueueTypeText = ReservationDisplayHelper.GetQueueTypeText(
+                        reader.IsDBNull(reader.GetOrdinal("QueueType"))
+                            ? 1
+                            : reader.GetInt32(reader.GetOrdinal("QueueType")))
                 });
             }
 
@@ -553,7 +559,9 @@ namespace sql.Repositories
                     StartTime = reader.IsDBNull(reader.GetOrdinal("StartTime")) ? null : reader.GetDateTime(reader.GetOrdinal("StartTime")),
                     EndTime = reader.IsDBNull(reader.GetOrdinal("EndTime")) ? null : reader.GetDateTime(reader.GetOrdinal("EndTime")),
                     ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
-                    Status = reader.GetInt32(reader.GetOrdinal("Status"))
+                    Status = reader.GetInt32(reader.GetOrdinal("Status")),
+                    StatusText = ReservationDisplayHelper.GetStatusText(reader.GetInt32(reader.GetOrdinal("Status"))),
+                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(reader.GetInt32(reader.GetOrdinal("Status")))
                 });
             }
 
@@ -573,6 +581,128 @@ namespace sql.Repositories
             connection.Open();
 
             return RepositorySqlHelper.GetCurrentUsers(connection, equipmentId);
+        }
+
+        public List<ScheduledReservationItem> GetAllScheduledReservations()
+        {
+            var scheduledReservations = new List<ScheduledReservationItem>();
+
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT r.Id,
+                       r.EquipmentId,
+                       e.equipmentName,
+                       r.UserId,
+                       r.ReservationTime,
+                       r.ReservedStartTime,
+                       r.ReservedEndTime,
+                       r.DurationMinutes,
+                       r.Status
+                FROM Reservations r
+                INNER JOIN Equipment e ON r.EquipmentId = e.Id
+                WHERE r.Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)
+                ORDER BY r.ReservedStartTime, r.Id", connection);
+
+            cmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            cmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
+
+            connection.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var status = reader.GetInt32(reader.GetOrdinal("Status"));
+                scheduledReservations.Add(new ScheduledReservationItem
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
+                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
+                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                    ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
+                    ReservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime")),
+                    ReservedEndTime = reader.GetDateTime(reader.GetOrdinal("ReservedEndTime")),
+                    DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
+                        ? 0
+                        : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
+                    Status = status,
+                    StatusText = ReservationDisplayHelper.GetStatusText(status),
+                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(status)
+                });
+            }
+
+            return scheduledReservations;
+        }
+
+        public List<ActiveReservationItem> GetAllActiveReservations()
+        {
+            var activeReservations = new List<ActiveReservationItem>();
+
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT r.*, e.equipmentName, e.AvailableTime
+                FROM Reservations r
+                INNER JOIN Equipment e ON r.EquipmentId = e.Id
+                WHERE r.Status = @Status
+                ORDER BY r.StartTime DESC", connection);
+
+            cmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.InProgress);
+
+            connection.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var status = reader.GetInt32(reader.GetOrdinal("Status"));
+                activeReservations.Add(new ActiveReservationItem
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
+                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
+                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                    StartTime = reader.GetDateTime(reader.GetOrdinal("StartTime")),
+                    AvailableTime = reader.GetInt16(reader.GetOrdinal("AvailableTime")),
+                    ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
+                    Status = status,
+                    StatusText = ReservationDisplayHelper.GetStatusText(status),
+                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(status)
+                });
+            }
+
+            return activeReservations;
+        }
+
+        public List<WaitingReservationItem> GetAllWaitingReservations()
+        {
+            var waitingReservations = new List<WaitingReservationItem>();
+
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                SELECT wq.*, e.equipmentName, e.AvailableTime as AverageUsageTime
+                FROM WaitingQueue wq
+                INNER JOIN Equipment e ON wq.EquipmentId = e.Id
+                ORDER BY wq.EquipmentId, COALESCE(wq.QueuePosition, wq.Position)", connection);
+
+            connection.Open();
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                var queueType = reader.IsDBNull(reader.GetOrdinal("QueueType"))
+                    ? 1
+                    : reader.GetInt32(reader.GetOrdinal("QueueType"));
+
+                waitingReservations.Add(new WaitingReservationItem
+                {
+                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
+                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
+                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
+                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                    QueueTime = reader.GetDateTime(reader.GetOrdinal("QueueTime")),
+                    Position = reader.GetInt32(reader.GetOrdinal("Position")),
+                    AverageUsageTime = reader.GetInt16(reader.GetOrdinal("AverageUsageTime")),
+                    QueueType = queueType,
+                    QueueTypeText = ReservationDisplayHelper.GetQueueTypeText(queueType)
+                });
+            }
+
+            return waitingReservations;
         }
 
         // 這個方法會回傳某個時段已被未來預約保留掉的名額數。

@@ -40,6 +40,21 @@
     font-weight: bold;
 }
 
+.status-scheduled {
+    color: #0dcaf0;
+    font-weight: bold;
+}
+
+.status-queue-expected {
+    color: #fd7e14;
+    font-weight: bold;
+}
+
+.status-unknown {
+    color: #6c757d;
+    font-weight: bold;
+}
+
 .time-remaining {
     font-size: 1.2rem;
     font-weight: bold;
