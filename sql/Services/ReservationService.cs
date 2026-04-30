@@ -76,6 +76,16 @@ namespace sql.Services
             return _reservationRepository.ForceEndUsage(reservationId, currentUser.UserId);
         }
 
+        public bool ForceCancelScheduledReservation(int reservationId, CurrentUser currentUser)
+        {
+            if (!currentUser.IsManager)
+            {
+                return false;
+            }
+
+            return _reservationRepository.ForceCancelScheduledReservation(reservationId, currentUser.UserId);
+        }
+
         // 背景服務與手動清理都會用到這個方法。
         public void AutoCompleteExpiredReservations()
         {

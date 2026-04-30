@@ -198,6 +198,71 @@ namespace sql.Repositories
             return true;
         }
 
+        // 管理者取消排隊時，不需要比對目前登入的使用者，
+        // 但如果這筆排隊是由未來預約轉進來，仍要同步取消原始預約。
+        public bool ForceCancelQueue(int queueId, int? managerUserId)
+        {
+            using var connection = _dbManager.CreateConnection();
+            connection.Open();
+
+            using var checkCmd = new SqlCommand(
+                "SELECT EquipmentId, ReservationId FROM WaitingQueue WHERE Id = @Id",
+                connection);
+            checkCmd.Parameters.AddWithValue("@Id", queueId);
+
+            byte? equipmentId = null;
+            int? reservationId = null;
+            using (var reader = checkCmd.ExecuteReader())
+            {
+                if (!reader.Read())
+                {
+                    return false;
+                }
+
+                equipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId"));
+                reservationId = reader.IsDBNull(reader.GetOrdinal("ReservationId"))
+                    ? null
+                    : reader.GetInt32(reader.GetOrdinal("ReservationId"));
+            }
+
+            if (!equipmentId.HasValue)
+            {
+                return false;
+            }
+
+            using var deleteCmd = new SqlCommand(
+                "DELETE FROM WaitingQueue WHERE Id = @Id",
+                connection);
+            deleteCmd.Parameters.AddWithValue("@Id", queueId);
+
+            var rowsAffected = deleteCmd.ExecuteNonQuery();
+            if (rowsAffected <= 0)
+            {
+                return false;
+            }
+
+            if (reservationId.HasValue)
+            {
+                using var cancelReservationCmd = new SqlCommand(@"
+                    UPDATE Reservations
+                    SET Status = @Status,
+                        CancelledAt = @CancelledAt,
+                        CancelReason = @CancelReason,
+                        CancelledByUserId = @CancelledByUserId
+                    WHERE Id = @Id", connection);
+                cancelReservationCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Cancelled);
+                cancelReservationCmd.Parameters.AddWithValue("@CancelledAt", RepositorySqlHelper.GetTaiwanTime());
+                cancelReservationCmd.Parameters.AddWithValue("@CancelReason", "管理者於後台取消排隊中的預約");
+                cancelReservationCmd.Parameters.AddWithValue("@CancelledByUserId", managerUserId.HasValue ? (object)managerUserId.Value : DBNull.Value);
+                cancelReservationCmd.Parameters.AddWithValue("@Id", reservationId.Value);
+                cancelReservationCmd.ExecuteNonQuery();
+            }
+
+            RecalculateQueuePositions(connection, equipmentId.Value);
+            ProcessEquipmentQueue(equipmentId.Value);
+            return true;
+        }
+
         // 重算排隊順位的做法：
         // 先依加入時間抓出所有 Id，再按照順序更新成 1,2,3...
         private static void RecalculateQueuePositions(SqlConnection connection, byte equipmentId)

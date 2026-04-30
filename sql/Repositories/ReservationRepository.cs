@@ -402,6 +402,45 @@ namespace sql.Repositories
             return true;
         }
 
+        // 管理者可直接取消尚未開始的未來預約。
+        // 這裡只允許 Scheduled / ScheduledQueueExpected，
+        // 避免把已在使用中或已完成的資料誤取消。
+        public bool ForceCancelScheduledReservation(int reservationId, int? managerUserId)
+        {
+            using var connection = _dbManager.CreateConnection();
+            connection.Open();
+
+            using var checkCmd = new SqlCommand(@"
+                SELECT EquipmentId
+                FROM Reservations
+                WHERE Id = @Id
+                  AND Status IN (@ScheduledStatus, @ScheduledQueueExpectedStatus)", connection);
+            checkCmd.Parameters.AddWithValue("@Id", reservationId);
+            checkCmd.Parameters.AddWithValue("@ScheduledStatus", (int)ReservationStatus.Scheduled);
+            checkCmd.Parameters.AddWithValue("@ScheduledQueueExpectedStatus", (int)ReservationStatus.ScheduledQueueExpected);
+
+            var result = checkCmd.ExecuteScalar();
+            if (result == null)
+            {
+                return false;
+            }
+
+            using var updateCmd = new SqlCommand(@"
+                UPDATE Reservations
+                SET Status = @Status,
+                    CancelledAt = @CancelledAt,
+                    CancelReason = @CancelReason,
+                    CancelledByUserId = @CancelledByUserId
+                WHERE Id = @Id", connection);
+            updateCmd.Parameters.AddWithValue("@Status", (int)ReservationStatus.Cancelled);
+            updateCmd.Parameters.AddWithValue("@CancelledAt", RepositorySqlHelper.GetTaiwanTime());
+            updateCmd.Parameters.AddWithValue("@CancelReason", "管理者於後台取消未來預約");
+            updateCmd.Parameters.AddWithValue("@CancelledByUserId", managerUserId.HasValue ? (object)managerUserId.Value : DBNull.Value);
+            updateCmd.Parameters.AddWithValue("@Id", reservationId);
+
+            return updateCmd.ExecuteNonQuery() > 0;
+        }
+
         public void AutoCompleteExpiredReservations()
         {
             try

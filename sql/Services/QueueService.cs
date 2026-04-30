@@ -77,5 +77,15 @@ namespace sql.Services
 
             return _queueRepository.CancelQueue(queueId, currentUser.ReservationUserKey);
         }
+
+        public bool ForceCancelQueue(int queueId, CurrentUser currentUser)
+        {
+            if (!currentUser.IsManager)
+            {
+                return false;
+            }
+
+            return _queueRepository.ForceCancelQueue(queueId, currentUser.UserId);
+        }
     }
 }

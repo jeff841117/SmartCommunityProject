@@ -314,6 +314,29 @@ namespace sql.Controllers
         }
 
         [HttpPost]
+        public JsonResult ForceCancelScheduledReservation(int reservationId)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _reservationService.ForceCancelScheduledReservation(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者取消未來預約")
+                    : ApiResponseFactory.OperationFailure("取消失敗，請確認該預約是否尚未開始"));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者取消未來預約時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
         public JsonResult ProcessAllQueues()
         {
             try
@@ -597,6 +620,29 @@ namespace sql.Controllers
             {
                 _logger.LogError(e, "取消排隊時發生錯誤");
                 return Json(ApiResponseFactory.OperationFailure("取消排隊失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ForceCancelQueue(int queueId)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _queueService.ForceCancelQueue(queueId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者移除排隊紀錄")
+                    : ApiResponseFactory.OperationFailure("移除排隊失敗，請確認該紀錄是否仍存在"));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者移除排隊時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
             }
         }
 
