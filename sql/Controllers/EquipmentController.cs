@@ -337,6 +337,44 @@ namespace sql.Controllers
         }
 
         [HttpPost]
+        public JsonResult ForceRescheduleScheduledReservation(AdminRescheduleReservationFormViewModel form)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "您沒有管理員權限"
+                    });
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "請確認新的日期與時段是否填寫完整"
+                    });
+                }
+
+                var result = _reservationService.ForceRescheduleScheduledReservation(form, currentUser);
+                return Json(result);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者調整未來預約時段時發生錯誤");
+                return Json(new ReservationResult
+                {
+                    Success = false,
+                    Message = ApiExceptionTranslator.ToUserMessage(e, e.Message)
+                });
+            }
+        }
+
+        [HttpPost]
         public JsonResult ProcessAllQueues()
         {
             try

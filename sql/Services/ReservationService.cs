@@ -86,6 +86,24 @@ namespace sql.Services
             return _reservationRepository.ForceCancelScheduledReservation(reservationId, currentUser.UserId);
         }
 
+        // 管理者調整時段時，仍沿用和一般未來預約相同的推算規則。
+        // 這樣才不會出現前台說不行、後台卻硬改成功的邏輯落差。
+        public ReservationResult ForceRescheduleScheduledReservation(
+            AdminRescheduleReservationFormViewModel form,
+            CurrentUser currentUser)
+        {
+            if (!currentUser.IsManager)
+            {
+                return new ReservationResult
+                {
+                    Success = false,
+                    Message = "您沒有管理員權限"
+                };
+            }
+
+            return _reservationRepository.RescheduleScheduledReservation(form, currentUser.UserId);
+        }
+
         // 背景服務與手動清理都會用到這個方法。
         public void AutoCompleteExpiredReservations()
         {

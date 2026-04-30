@@ -1,6 +1,6 @@
 @model sql.Models.ReservationManagementPageViewModel
 @{
-    ViewData["Title"] = "預約與排隊總覽";
+    ViewData["Title"] = "預約管理總覽";
     Layout = "";
 }
 
@@ -16,12 +16,12 @@
     <div class="container py-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h1 class="fw-bold mb-1">預約與排隊總覽</h1>
-                <p class="text-muted mb-0">管理者可在這裡檢查並處理未來預約、使用中與排隊中的整體狀況</p>
+                <h1 class="fw-bold mb-1">預約管理總覽</h1>
+                <p class="text-muted mb-0">集中查看未來預約、使用中、排隊中資料，並提供管理者干預入口。</p>
             </div>
             <div class="text-end">
-                <a href="/Equipment/Index" class="btn btn-outline-secondary">返回設備管理</a>
-                <div class="small text-muted mt-2">更新時間：@Model.Dashboard.ServerTaiwanTime</div>
+                <a href="/Equipment/Index" class="btn btn-outline-secondary">回到設備管理</a>
+                <div class="small text-muted mt-2">伺服器時間：@Model.Dashboard.ServerTaiwanTime</div>
             </div>
         </div>
 
@@ -41,8 +41,8 @@
                                     <th>預約時段</th>
                                     <th>狀態</th>
                                     <th>建立時間</th>
-                                    <th>查看設備鏈</th>
-                                    <th>操作</th>
+                                    <th>查看鏈</th>
+                                    <th>管理操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -65,7 +65,12 @@
                                                 查看
                                             </button>
                                         </td>
-                                        <td>
+                                        <td class="d-flex flex-wrap gap-2">
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    type="button"
+                                                    onclick="openRescheduleModal(@reservation.Id, '@reservation.ReservedStartTime.ToString("yyyy-MM-dd")', '@reservation.ReservedStartTime.ToString("HH:mm")')">
+                                                調整時段
+                                            </button>
                                             <button class="btn btn-sm btn-outline-danger"
                                                     type="button"
                                                     onclick="forceCancelScheduledReservation(@reservation.Id)">
@@ -80,7 +85,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有未來預約。</div>
+                    <div class="text-muted">目前沒有未來預約資料。</div>
                 }
             </div>
         </div>
@@ -101,7 +106,7 @@
                                     <th>開始時間</th>
                                     <th>剩餘時間</th>
                                     <th>狀態</th>
-                                    <th>操作</th>
+                                    <th>管理操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -128,7 +133,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有使用中的設備。</div>
+                    <div class="text-muted">目前沒有使用中資料。</div>
                 }
             </div>
         </div>
@@ -147,10 +152,10 @@
                                     <th>設備</th>
                                     <th>會員</th>
                                     <th>順位</th>
-                                    <th>加入時間</th>
-                                    <th>排隊來源</th>
-                                    <th>查看設備鏈</th>
-                                    <th>操作</th>
+                                    <th>排隊時間</th>
+                                    <th>排隊類型</th>
+                                    <th>查看鏈</th>
+                                    <th>管理操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -184,7 +189,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有排隊中的設備。</div>
+                    <div class="text-muted">目前沒有排隊資料。</div>
                 }
             </div>
         </div>
@@ -194,7 +199,7 @@
         <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="equipmentChainTitle">設備預約鏈</h5>
+                    <h5 class="modal-title" id="equipmentChainTitle">設備預約／排隊鏈</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body" id="equipmentChainBody">
@@ -204,11 +209,44 @@
         </div>
     </div>
 
+    <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">調整未來預約時段</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="rescheduleReservationId" />
+                    <div class="mb-3">
+                        <label for="rescheduleReservationDate" class="form-label">新的預約日期</label>
+                        <input type="date" class="form-control" id="rescheduleReservationDate" />
+                    </div>
+                    <div class="mb-3">
+                        <label for="rescheduleReservationTime" class="form-label">新的開始時段</label>
+                        <input type="time" class="form-control" id="rescheduleReservationTime" step="900" />
+                        <div class="form-text">以 15 分鐘為一個單位，例如 09:00、09:15、09:30。</div>
+                    </div>
+                    <div class="small text-muted">
+                        後台調整時段時，系統仍會重新檢查保留名額與排隊推算。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">儲存調整</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        const rescheduleModalElement = document.getElementById('rescheduleModal');
+        const rescheduleModal = new bootstrap.Modal(rescheduleModalElement);
+
         function forceEndUsage(reservationId) {
-            if (!confirm('確定要由管理者強制結束這筆使用中的預約嗎？')) {
+            if (!confirm('確定要由管理者強制結束這筆使用中預約嗎？')) {
                 return;
             }
 
@@ -248,7 +286,7 @@
         }
 
         function forceCancelQueue(queueId) {
-            if (!confirm('確定要由管理者移除這筆排隊紀錄嗎？')) {
+            if (!confirm('確定要由管理者移除這筆排隊資料嗎？')) {
                 return;
             }
 
@@ -267,11 +305,57 @@
                 });
         }
 
+        function openRescheduleModal(reservationId, reservationDate, reservationTime) {
+            document.getElementById('rescheduleReservationId').value = reservationId;
+            document.getElementById('rescheduleReservationDate').value = reservationDate;
+            document.getElementById('rescheduleReservationTime').value = reservationTime;
+            rescheduleModal.show();
+        }
+
+        function submitRescheduleReservation(confirmQueueExpected) {
+            const reservationId = document.getElementById('rescheduleReservationId').value;
+            const reservationDate = document.getElementById('rescheduleReservationDate').value;
+            const selectedSlotStartTime = document.getElementById('rescheduleReservationTime').value;
+
+            if (!reservationDate || !selectedSlotStartTime) {
+                alert('請先選擇新的日期與時段');
+                return;
+            }
+
+            $.post('/Equipment/ForceRescheduleScheduledReservation', {
+                reservationId: reservationId,
+                reservationDate: reservationDate,
+                selectedSlotStartTime: selectedSlotStartTime,
+                confirmQueueExpected: confirmQueueExpected
+            })
+                .done(function (response) {
+                    if (response.success) {
+                        rescheduleModal.hide();
+                        alert(response.message);
+                        window.location.reload();
+                        return;
+                    }
+
+                    if (response.requiresConfirmation && response.queueExpected) {
+                        const message = response.message || '系統推算到時仍可能需要排隊，確定仍要調整到這個時段嗎？';
+                        if (confirm(message)) {
+                            submitRescheduleReservation(true);
+                        }
+                        return;
+                    }
+
+                    alert(response.message || '調整時段失敗');
+                })
+                .fail(function () {
+                    alert('調整時段失敗，請稍後再試');
+                });
+        }
+
         function loadEquipmentChain(equipmentId) {
             $.get('/Equipment/GetEquipmentReservationChain', { equipmentId: equipmentId })
                 .done(function (response) {
                     if (!response.success || !response.data) {
-                        alert(response.message || '無法載入設備預約鏈');
+                        alert(response.message || '無法取得設備預約鏈資訊');
                         return;
                     }
 
@@ -280,7 +364,7 @@
                     modal.show();
                 })
                 .fail(function () {
-                    alert('無法載入設備預約鏈');
+                    alert('無法取得設備預約鏈資訊');
                 });
         }
 
@@ -317,15 +401,21 @@
             $('#equipmentChainBody').html(`
                 <div class="mb-4">
                     <h6>未來預約</h6>
-                    ${scheduledRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>結束</th><th>狀態</th></tr></thead><tbody>${scheduledRows}</tbody></table>` : '<div class="text-muted">目前沒有未來預約。</div>'}
+                    ${scheduledRows
+                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>結束時間</th><th>狀態</th></tr></thead><tbody>${scheduledRows}</tbody></table>`
+                        : '<div class="text-muted">目前沒有未來預約。</div>'}
                 </div>
                 <div class="mb-4">
                     <h6>使用中</h6>
-                    ${activeRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>` : '<div class="text-muted">目前沒有使用中資料。</div>'}
+                    ${activeRows
+                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>`
+                        : '<div class="text-muted">目前沒有使用中資料。</div>'}
                 </div>
                 <div>
                     <h6>排隊中</h6>
-                    ${waitingRows ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>來源</th><th>加入時間</th></tr></thead><tbody>${waitingRows}</tbody></table>` : '<div class="text-muted">目前沒有排隊資料。</div>'}
+                    ${waitingRows
+                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>類型</th><th>排隊時間</th></tr></thead><tbody>${waitingRows}</tbody></table>`
+                        : '<div class="text-muted">目前沒有排隊資料。</div>'}
                 </div>
             `);
         }

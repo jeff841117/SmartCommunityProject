@@ -2,8 +2,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace sql.Models
 {
-    // 這份檔案集中管理「畫面表單輸入模型」。
-    // 目的不是取代資料表模型，而是把每個頁面真正需要的輸入欄位定清楚。
+    // 這份檔案集中管理表單輸入模型。
+    // 好處是欄位驗證、錯誤訊息、畫面輸入邊界都放在同一處，
+    // 之後 Controller 只需要接模型，不必再自己拆一堆散參數。
     public class LoginFormViewModel
     {
         [Required(ErrorMessage = "請輸入帳號")]
@@ -23,10 +24,10 @@ namespace sql.Models
         [Required(ErrorMessage = "請輸入密碼")]
         public string Password { get; set; } = string.Empty;
 
-        [Range(1, 200, ErrorMessage = "請輸入正確年齡")]
+        [Range(1, 200, ErrorMessage = "請輸入合理年齡")]
         public double Age { get; set; }
 
-        [EmailAddress(ErrorMessage = "請輸入正確的電子郵件")]
+        [EmailAddress(ErrorMessage = "請輸入正確的 Email 格式")]
         public string Email { get; set; } = string.Empty;
 
         public string Phone { get; set; } = string.Empty;
@@ -39,10 +40,10 @@ namespace sql.Models
         [Required(ErrorMessage = "請輸入設備名稱")]
         public string EquipmentName { get; set; } = string.Empty;
 
-        [Range(1, 100, ErrorMessage = "請輸入正確的最大使用人數")]
+        [Range(1, 100, ErrorMessage = "請輸入合理的同時使用上限")]
         public byte MaxUsers { get; set; }
 
-        [Range(1, 1440, ErrorMessage = "請輸入正確的可使用分鐘數")]
+        [Range(1, 1440, ErrorMessage = "請輸入合理的使用時間（分鐘）")]
         public short AvailableTime { get; set; }
 
         [Required(ErrorMessage = "請輸入開放時間")]
@@ -62,10 +63,10 @@ namespace sql.Models
         [Required(ErrorMessage = "請輸入設備名稱")]
         public string EquipmentName { get; set; } = string.Empty;
 
-        [Range(1, 100, ErrorMessage = "請輸入正確的最大使用人數")]
+        [Range(1, 100, ErrorMessage = "請輸入合理的同時使用上限")]
         public byte MaxUsers { get; set; }
 
-        [Range(1, 1440, ErrorMessage = "請輸入正確的可使用分鐘數")]
+        [Range(1, 1440, ErrorMessage = "請輸入合理的使用時間（分鐘）")]
         public short AvailableTime { get; set; }
 
         [Required(ErrorMessage = "請輸入開放時間")]
@@ -83,13 +84,13 @@ namespace sql.Models
 
     public class UpdateAccountFormViewModel
     {
-        [Required(ErrorMessage = "缺少帳號編號")]
+        [Required(ErrorMessage = "缺少會員編號")]
         public int Id { get; set; }
 
         [Required(ErrorMessage = "請輸入密碼")]
         public string Password { get; set; } = string.Empty;
 
-        [EmailAddress(ErrorMessage = "請輸入正確的電子郵件")]
+        [EmailAddress(ErrorMessage = "請輸入正確的 Email 格式")]
         public string Email { get; set; } = string.Empty;
 
         public string Phone { get; set; } = string.Empty;
@@ -97,8 +98,8 @@ namespace sql.Models
 
     public class ForgotPasswordFormViewModel
     {
-        [Required(ErrorMessage = "請輸入註冊電子郵件")]
-        [EmailAddress(ErrorMessage = "請輸入正確的電子郵件")]
+        [Required(ErrorMessage = "請輸入註冊時設定的 Email")]
+        [EmailAddress(ErrorMessage = "請輸入正確的 Email 格式")]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "請輸入 6 碼驗證碼")]
@@ -116,5 +117,22 @@ namespace sql.Models
         public string ErrorMessage { get; set; } = string.Empty;
         public string SuccessMessage { get; set; } = string.Empty;
         public string DebugCode { get; set; } = string.Empty;
+    }
+
+    // 這個模型專門給管理者後台調整未來預約時段。
+    // 我們把日期、時段與是否接受預約排隊拆成獨立欄位，
+    // 讓後端可以直接沿用既有的未來預約推算規則。
+    public class AdminRescheduleReservationFormViewModel
+    {
+        [Required(ErrorMessage = "缺少預約編號")]
+        public int ReservationId { get; set; }
+
+        [Required(ErrorMessage = "請選擇新的預約日期")]
+        public string ReservationDate { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "請選擇新的開始時段")]
+        public string SelectedSlotStartTime { get; set; } = string.Empty;
+
+        public bool ConfirmQueueExpected { get; set; }
     }
 }
