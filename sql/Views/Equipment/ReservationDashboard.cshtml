@@ -17,7 +17,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h1 class="fw-bold mb-1">預約管理總覽</h1>
-                <p class="text-muted mb-0">集中查看未來預約、使用中、排隊中資料，並提供管理者干預入口。</p>
+                <p class="text-muted mb-0">集中查看未來預約、使用中與排隊中資料，並提供管理者干預入口。</p>
             </div>
             <div class="text-end">
                 <a href="/Equipment/Index" class="btn btn-outline-secondary">回到設備管理</a>
@@ -41,7 +41,7 @@
                                     <th>預約時段</th>
                                     <th>狀態</th>
                                     <th>建立時間</th>
-                                    <th>查看鏈</th>
+                                    <th>查看設備鏈</th>
                                     <th>管理操作</th>
                                 </tr>
                             </thead>
@@ -154,7 +154,7 @@
                                     <th>順位</th>
                                     <th>排隊時間</th>
                                     <th>排隊類型</th>
-                                    <th>查看鏈</th>
+                                    <th>查看設備鏈</th>
                                     <th>管理操作</th>
                                 </tr>
                             </thead>
@@ -227,12 +227,16 @@
                         <input type="time" class="form-control" id="rescheduleReservationTime" step="900" />
                         <div class="form-text">以 15 分鐘為一個單位，例如 09:00、09:15、09:30。</div>
                     </div>
+                    <div id="reschedulePreviewBox" class="alert alert-secondary small mb-3">
+                        請先選擇新的日期與時段，再按「預覽影響」查看這次調整的結果。
+                    </div>
                     <div class="small text-muted">
-                        後台調整時段時，系統仍會重新檢查保留名額與排隊推算。
+                        後台調整時段時，系統仍會重新檢查保留名額與排隊推算規則。
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-outline-primary" onclick="previewRescheduleImpact()">預覽影響</button>
                     <button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">儲存調整</button>
                 </div>
             </div>
@@ -309,7 +313,69 @@
             document.getElementById('rescheduleReservationId').value = reservationId;
             document.getElementById('rescheduleReservationDate').value = reservationDate;
             document.getElementById('rescheduleReservationTime').value = reservationTime;
+            resetReschedulePreview();
             rescheduleModal.show();
+        }
+
+        function resetReschedulePreview() {
+            const box = document.getElementById('reschedulePreviewBox');
+            box.className = 'alert alert-secondary small mb-3';
+            box.innerHTML = '請先選擇新的日期與時段，再按「預覽影響」查看這次調整的結果。';
+        }
+
+        function previewRescheduleImpact() {
+            const reservationId = document.getElementById('rescheduleReservationId').value;
+            const reservationDate = document.getElementById('rescheduleReservationDate').value;
+            const selectedSlotStartTime = document.getElementById('rescheduleReservationTime').value;
+            const box = document.getElementById('reschedulePreviewBox');
+
+            if (!reservationDate || !selectedSlotStartTime) {
+                box.className = 'alert alert-warning small mb-3';
+                box.innerHTML = '請先選擇新的日期與時段。';
+                return;
+            }
+
+            box.className = 'alert alert-secondary small mb-3';
+            box.innerHTML = '系統推算中...';
+
+            $.get('/Equipment/PreviewRescheduleScheduledReservation', {
+                reservationId: reservationId,
+                reservationDate: reservationDate,
+                selectedSlotStartTime: selectedSlotStartTime
+            })
+                .done(function (response) {
+                    if (!response.success || !response.data) {
+                        box.className = 'alert alert-danger small mb-3';
+                        box.innerHTML = response.message || '無法預覽這次調整的影響。';
+                        return;
+                    }
+
+                    const preview = response.data;
+                    if (!preview.canReschedule) {
+                        box.className = 'alert alert-danger small mb-3';
+                        box.innerHTML = preview.message || '這個時段目前無法調整。';
+                        return;
+                    }
+
+                    const details = [
+                        `預計狀態：${preview.targetStatusText}`,
+                        `保留名額：${preview.reservedCapacityCount}`,
+                        `推算前方等待：${preview.forecastWaitingCount}`,
+                        `新時段：${preview.scheduledStartTimeText} - ${preview.scheduledEndTimeText}`
+                    ];
+
+                    box.className = preview.queueExpected
+                        ? 'alert alert-warning small mb-3'
+                        : 'alert alert-success small mb-3';
+                    box.innerHTML = `
+                        <div class="fw-semibold mb-1">${preview.message}</div>
+                        <div>${details.join('｜')}</div>
+                    `;
+                })
+                .fail(function () {
+                    box.className = 'alert alert-danger small mb-3';
+                    box.innerHTML = '無法預覽這次調整的影響，請稍後再試。';
+                });
         }
 
         function submitRescheduleReservation(confirmQueueExpected) {

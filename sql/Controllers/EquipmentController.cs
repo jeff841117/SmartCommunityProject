@@ -374,6 +374,34 @@ namespace sql.Controllers
             }
         }
 
+        [HttpGet]
+        public JsonResult PreviewRescheduleScheduledReservation(
+            int reservationId,
+            string reservationDate,
+            string selectedSlotStartTime)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                var preview = _reservationService.PreviewRescheduleScheduledReservation(
+                    new AdminRescheduleReservationFormViewModel
+                    {
+                        ReservationId = reservationId,
+                        ReservationDate = reservationDate,
+                        SelectedSlotStartTime = selectedSlotStartTime
+                    },
+                    currentUser);
+
+                return Json(ApiResponseFactory.DataSuccess(preview));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "預覽管理者調整未來預約時段影響時發生錯誤");
+                return Json(ApiResponseFactory.DataFailure<ReservationAdjustmentPreviewResponse>(
+                    ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
         [HttpPost]
         public JsonResult ProcessAllQueues()
         {

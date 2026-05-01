@@ -451,107 +451,26 @@ namespace sql.Repositories
             {
                 _ = managerUserId;
 
-                var existingReservation = GetManageableScheduledReservation(request.ReservationId);
-                if (existingReservation == null)
+                var evaluation = EvaluateRescheduleScheduledReservation(request);
+                if (!evaluation.CanProceed || evaluation.ExistingReservation == null)
                 {
                     return new ReservationResult
                     {
                         Success = false,
-                        Message = "找不到可調整的未來預約，或該預約已經開始"
+                        Message = evaluation.Message
                     };
                 }
 
-                var equipment = GetEquipmentById(existingReservation.EquipmentId);
-                if (equipment == null)
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "設備不存在"
-                    };
-                }
-
-                if (!DateOnly.TryParse(request.ReservationDate, out var reservationDate))
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "新的預約日期格式不正確"
-                    };
-                }
-
-                if (!TimeOnly.TryParse(request.SelectedSlotStartTime, out var slotStartTime))
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "新的預約時段格式不正確"
-                    };
-                }
-
-                var taiwanTime = RepositorySqlHelper.GetTaiwanTime();
-                var reservedStartTime = reservationDate.ToDateTime(slotStartTime);
-                var reservedEndTime = reservedStartTime.AddMinutes(equipment.AvailableTime);
-                var latestStartTime = reservationDate.ToDateTime(TimeOnly.MinValue)
-                    .Add(equipment.CloseTime)
-                    .AddMinutes(-equipment.AvailableTime);
-
-                if (reservedStartTime <= taiwanTime)
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "新的預約時間必須晚於目前時間"
-                    };
-                }
-
-                if (reservedStartTime.TimeOfDay < equipment.OpenTime || reservedStartTime > latestStartTime)
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "新的時段不在設備可預約範圍內"
-                    };
-                }
-
-                if (HasScheduledReservationConflict(
-                    existingReservation.UserId,
-                    reservedStartTime,
-                    reservedEndTime,
-                    existingReservation.Id))
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = "該會員在新的時段已有其他預約，請改選其他時間"
-                    };
-                }
-
-                var forecast = BuildFutureReservationForecast(
-                    equipment,
-                    reservedStartTime,
-                    reservedEndTime,
-                    existingReservation.Id);
-
-                if (forecast.HasReservedCapacityConflict)
-                {
-                    return new ReservationResult
-                    {
-                        Success = false,
-                        Message = forecast.Message
-                    };
-                }
-
-                if (forecast.QueueExpected && !request.ConfirmQueueExpected)
+                if (evaluation.Forecast!.QueueExpected && !request.ConfirmQueueExpected)
                 {
                     return new ReservationResult
                     {
                         Success = false,
                         RequiresConfirmation = true,
                         QueueExpected = true,
-                        Message = forecast.Message,
-                        ScheduledStartTime = reservedStartTime,
-                        ScheduledEndTime = reservedEndTime
+                        Message = evaluation.Message,
+                        ScheduledStartTime = evaluation.ReservedStartTime,
+                        ScheduledEndTime = evaluation.ReservedEndTime
                     };
                 }
 
@@ -575,17 +494,17 @@ namespace sql.Repositories
                         EndedByType = NULL,
                         EndedByUserId = NULL
                     WHERE Id = @Id", connection);
-                updateCmd.Parameters.AddWithValue("@StartTime", reservedStartTime);
-                updateCmd.Parameters.AddWithValue("@ReservedStartTime", reservedStartTime);
-                updateCmd.Parameters.AddWithValue("@ReservedEndTime", reservedEndTime);
-                updateCmd.Parameters.AddWithValue("@DurationMinutes", equipment.AvailableTime);
+                updateCmd.Parameters.AddWithValue("@StartTime", evaluation.ReservedStartTime);
+                updateCmd.Parameters.AddWithValue("@ReservedStartTime", evaluation.ReservedStartTime);
+                updateCmd.Parameters.AddWithValue("@ReservedEndTime", evaluation.ReservedEndTime);
+                updateCmd.Parameters.AddWithValue("@DurationMinutes", evaluation.Equipment!.AvailableTime);
                 updateCmd.Parameters.AddWithValue(
                     "@Status",
-                    (int)(forecast.QueueExpected
+                    (int)(evaluation.Forecast.QueueExpected
                         ? ReservationStatus.ScheduledQueueExpected
                         : ReservationStatus.Scheduled));
-                updateCmd.Parameters.AddWithValue("@ReservationType", forecast.QueueExpected ? 3 : 2);
-                updateCmd.Parameters.AddWithValue("@Id", existingReservation.Id);
+                updateCmd.Parameters.AddWithValue("@ReservationType", evaluation.Forecast.QueueExpected ? 3 : 2);
+                updateCmd.Parameters.AddWithValue("@Id", evaluation.ExistingReservation.Id);
 
                 if (updateCmd.ExecuteNonQuery() <= 0)
                 {
@@ -599,12 +518,12 @@ namespace sql.Repositories
                 return new ReservationResult
                 {
                     Success = true,
-                    Message = forecast.QueueExpected
+                    Message = evaluation.Forecast.QueueExpected
                         ? "管理者已調整預約時段，但依目前推算到時仍可能需要排隊"
                         : "管理者已成功調整預約時段",
-                    QueueExpected = forecast.QueueExpected,
-                    ScheduledStartTime = reservedStartTime,
-                    ScheduledEndTime = reservedEndTime
+                    QueueExpected = evaluation.Forecast.QueueExpected,
+                    ScheduledStartTime = evaluation.ReservedStartTime,
+                    ScheduledEndTime = evaluation.ReservedEndTime
                 };
             }
             catch (Exception ex)
@@ -614,6 +533,46 @@ namespace sql.Repositories
                 {
                     Success = false,
                     Message = "調整預約時段失敗，請稍後再試"
+                };
+            }
+        }
+
+        public ReservationAdjustmentPreviewResponse PreviewRescheduleScheduledReservation(
+            AdminRescheduleReservationFormViewModel request)
+        {
+            try
+            {
+                var evaluation = EvaluateRescheduleScheduledReservation(request);
+                if (!evaluation.CanProceed)
+                {
+                    return new ReservationAdjustmentPreviewResponse
+                    {
+                        CanReschedule = false,
+                        Message = evaluation.Message
+                    };
+                }
+
+                return new ReservationAdjustmentPreviewResponse
+                {
+                    CanReschedule = true,
+                    QueueExpected = evaluation.Forecast!.QueueExpected,
+                    ReservedCapacityCount = evaluation.Forecast.ReservedCapacityCount,
+                    ForecastWaitingCount = evaluation.Forecast.ForecastWaitingCount,
+                    TargetStatusText = evaluation.Forecast.QueueExpected
+                        ? ReservationDisplayHelper.GetStatusText((int)ReservationStatus.ScheduledQueueExpected)
+                        : ReservationDisplayHelper.GetStatusText((int)ReservationStatus.Scheduled),
+                    Message = evaluation.Message,
+                    ScheduledStartTimeText = evaluation.ReservedStartTime.ToString("yyyy-MM-dd HH:mm"),
+                    ScheduledEndTimeText = evaluation.ReservedEndTime.ToString("yyyy-MM-dd HH:mm")
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"預覽調整未來預約影響時發生錯誤: {ex.Message}");
+                return new ReservationAdjustmentPreviewResponse
+                {
+                    CanReschedule = false,
+                    Message = "無法預覽這次調整的影響，請稍後再試"
                 };
             }
         }
@@ -1360,6 +1319,79 @@ namespace sql.Repositories
             };
         }
 
+        // 這裡把「管理者調整時段前要做的檢查」集中起來，
+        // 讓預覽與真正送出可以共用同一份判斷，不會一邊說可以、一邊寫入時才失敗。
+        private RescheduleEvaluationResult EvaluateRescheduleScheduledReservation(
+            AdminRescheduleReservationFormViewModel request)
+        {
+            var existingReservation = GetManageableScheduledReservation(request.ReservationId);
+            if (existingReservation == null)
+            {
+                return RescheduleEvaluationResult.Fail("找不到可調整的未來預約，或該預約已經開始");
+            }
+
+            var equipment = GetEquipmentById(existingReservation.EquipmentId);
+            if (equipment == null)
+            {
+                return RescheduleEvaluationResult.Fail("設備不存在");
+            }
+
+            if (!DateOnly.TryParse(request.ReservationDate, out var reservationDate))
+            {
+                return RescheduleEvaluationResult.Fail("新的預約日期格式不正確");
+            }
+
+            if (!TimeOnly.TryParse(request.SelectedSlotStartTime, out var slotStartTime))
+            {
+                return RescheduleEvaluationResult.Fail("新的預約時段格式不正確");
+            }
+
+            var taiwanTime = RepositorySqlHelper.GetTaiwanTime();
+            var reservedStartTime = reservationDate.ToDateTime(slotStartTime);
+            var reservedEndTime = reservedStartTime.AddMinutes(equipment.AvailableTime);
+            var latestStartTime = reservationDate.ToDateTime(TimeOnly.MinValue)
+                .Add(equipment.CloseTime)
+                .AddMinutes(-equipment.AvailableTime);
+
+            if (reservedStartTime <= taiwanTime)
+            {
+                return RescheduleEvaluationResult.Fail("新的預約時間必須晚於目前時間");
+            }
+
+            if (reservedStartTime.TimeOfDay < equipment.OpenTime || reservedStartTime > latestStartTime)
+            {
+                return RescheduleEvaluationResult.Fail("新的時段不在設備可預約範圍內");
+            }
+
+            if (HasScheduledReservationConflict(
+                existingReservation.UserId,
+                reservedStartTime,
+                reservedEndTime,
+                existingReservation.Id))
+            {
+                return RescheduleEvaluationResult.Fail("該會員在新的時段已有其他預約，請改選其他時間");
+            }
+
+            var forecast = BuildFutureReservationForecast(
+                equipment,
+                reservedStartTime,
+                reservedEndTime,
+                existingReservation.Id);
+
+            if (forecast.HasReservedCapacityConflict)
+            {
+                return RescheduleEvaluationResult.Fail(forecast.Message);
+            }
+
+            return RescheduleEvaluationResult.Success(
+                existingReservation,
+                equipment,
+                reservedStartTime,
+                reservedEndTime,
+                forecast,
+                forecast.Message);
+        }
+
         // 先把過期預約整理成清單，再進行更新，
         // 這樣可以避免一邊讀取資料，一邊修改同一批資料造成流程混亂。
         private List<ExpiredReservationInfo> GetExpiredReservations(SqlConnection connection)
@@ -1529,6 +1561,46 @@ namespace sql.Repositories
             public byte EquipmentId { get; set; }
             public string UserId { get; set; } = string.Empty;
             public DateTime ReservedStartTime { get; set; }
+        }
+
+        private class RescheduleEvaluationResult
+        {
+            public bool CanProceed { get; private set; }
+            public string Message { get; private set; } = string.Empty;
+            public Reservation? ExistingReservation { get; private set; }
+            public Equipment? Equipment { get; private set; }
+            public DateTime ReservedStartTime { get; private set; }
+            public DateTime ReservedEndTime { get; private set; }
+            public FutureReservationForecast? Forecast { get; private set; }
+
+            public static RescheduleEvaluationResult Fail(string message)
+            {
+                return new RescheduleEvaluationResult
+                {
+                    CanProceed = false,
+                    Message = message
+                };
+            }
+
+            public static RescheduleEvaluationResult Success(
+                Reservation existingReservation,
+                Equipment equipment,
+                DateTime reservedStartTime,
+                DateTime reservedEndTime,
+                FutureReservationForecast forecast,
+                string message)
+            {
+                return new RescheduleEvaluationResult
+                {
+                    CanProceed = true,
+                    Message = message,
+                    ExistingReservation = existingReservation,
+                    Equipment = equipment,
+                    ReservedStartTime = reservedStartTime,
+                    ReservedEndTime = reservedEndTime,
+                    Forecast = forecast
+                };
+            }
         }
     }
 }

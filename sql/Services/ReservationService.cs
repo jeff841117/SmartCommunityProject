@@ -104,6 +104,22 @@ namespace sql.Services
             return _reservationRepository.RescheduleScheduledReservation(form, currentUser.UserId);
         }
 
+        public ReservationAdjustmentPreviewResponse PreviewRescheduleScheduledReservation(
+            AdminRescheduleReservationFormViewModel form,
+            CurrentUser currentUser)
+        {
+            if (!currentUser.IsManager)
+            {
+                return new ReservationAdjustmentPreviewResponse
+                {
+                    CanReschedule = false,
+                    Message = "您沒有管理員權限"
+                };
+            }
+
+            return _reservationRepository.PreviewRescheduleScheduledReservation(form);
+        }
+
         // 背景服務與手動清理都會用到這個方法。
         public void AutoCompleteExpiredReservations()
         {
