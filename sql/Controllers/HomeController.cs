@@ -9,15 +9,18 @@ namespace sql.Controllers
     {
         private readonly ILogger<HomeController> _logger;
         private readonly AccountService _accountService;
+        private readonly AdminActionLogService _adminActionLogService;
 
         public HomeController(
             ILogger<HomeController> logger,
             AccountService accountService,
+            AdminActionLogService adminActionLogService,
             CurrentUserService currentUserService)
             : base(currentUserService)
         {
             _logger = logger;
             _accountService = accountService;
+            _adminActionLogService = adminActionLogService;
         }
 
         public IActionResult Index()
@@ -33,6 +36,22 @@ namespace sql.Controllers
             var viewModel = new AccountManagementPageViewModel
             {
                 Accounts = _accountService.GetAllAccounts()
+            };
+
+            return View(viewModel);
+        }
+
+        public IActionResult AdminActionLogs()
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var viewModel = new AdminActionLogPageViewModel
+            {
+                Logs = _adminActionLogService.GetRecentLogs()
             };
 
             return View(viewModel);

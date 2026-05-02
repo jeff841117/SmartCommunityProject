@@ -24,4 +24,9 @@
     {
         public ReservationDashboardResponse Dashboard { get; set; } = new();
     }
+
+    public class AdminActionLogPageViewModel
+    {
+        public List<AdminActionLogListItem> Logs { get; set; } = new();
+    }
 }

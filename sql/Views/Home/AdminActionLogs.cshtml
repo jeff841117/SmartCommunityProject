@@ -1,0 +1,58 @@
+@model sql.Models.AdminActionLogPageViewModel
+@{
+    ViewData["Title"] = "管理者操作紀錄";
+}
+
+<link href="~/css/indexHome.css" rel="stylesheet" asp-append-version="true">
+
+<div class="header-section">
+    <div class="container">
+        <h1 class="display-4 fw-bold">管理者操作紀錄</h1>
+        <p class="lead">查看後台干預預約、排隊流程的最近紀錄</p>
+    </div>
+</div>
+
+<div class="container">
+    <div class="button-container">
+        <a href="/Home/Index" class="add-equipment-btn">回到帳號管理</a>
+    </div>
+
+    <div class="table-container">
+        @if (Model.Logs.Any())
+        {
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>紀錄編號</th>
+                        <th>操作時間</th>
+                        <th>管理者</th>
+                        <th>操作類型</th>
+                        <th>目標類型</th>
+                        <th>目標編號</th>
+                        <th>原因摘要</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var log in Model.Logs)
+                    {
+                        <tr>
+                            <td>@log.Id</td>
+                            <td>@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@log.AdminUserName (@log.AdminUserId)</td>
+                            <td>@log.ActionTypeText</td>
+                            <td>@log.TargetTypeText</td>
+                            <td>@log.TargetId</td>
+                            <td>@(string.IsNullOrWhiteSpace(log.Reason) ? "無補充原因" : log.Reason)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-secondary mb-0">
+                目前還沒有管理者操作紀錄。
+            </div>
+        }
+    </div>
+</div>

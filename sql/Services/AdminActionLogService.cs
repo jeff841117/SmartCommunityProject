@@ -3,8 +3,9 @@ using sql.Repositories;
 
 namespace sql.Services
 {
-    // 這層先負責把管理者操作意圖整理成可讀的紀錄內容，
-    // Controller / ReservationService / QueueService 就不需要自己拼 action type 與 reason。
+    // 這層負責把管理者操作意圖整理成可讀的日誌內容。
+    // Controller、ReservationService、QueueService 不需要自己拼 action type 與 reason，
+    // 只要呼叫對應方法即可。
     public class AdminActionLogService
     {
         private readonly AdminActionLogRepository _adminActionLogRepository;
@@ -69,6 +70,11 @@ namespace sql.Services
             });
         }
 
+        public List<AdminActionLogListItem> GetRecentLogs(int take = 100)
+        {
+            return _adminActionLogRepository.GetRecentLogs(take);
+        }
+
         private void WriteLog(AdminActionLogEntry entry)
         {
             try
@@ -77,8 +83,7 @@ namespace sql.Services
             }
             catch (Exception ex)
             {
-                // 操作紀錄不應反過來阻斷主要功能。
-                // 所以這裡先吞掉例外，避免因為日誌表異常導致實際的管理操作失敗。
+                // 操作紀錄不應阻斷主要功能，所以這裡只記錄主控台訊息。
                 Console.WriteLine($"寫入管理者操作紀錄時發生錯誤: {ex.Message}");
             }
         }
