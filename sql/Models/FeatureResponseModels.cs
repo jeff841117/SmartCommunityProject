@@ -90,6 +90,59 @@ namespace sql.Models
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 
+    // 這是後台總覽頁的篩選條件。
+    // 先用明確模型集中條件，之後要補更多篩選時不用再改一堆 action 參數。
+    public class ReservationDashboardFilter
+    {
+        public string? EquipmentKeyword { get; set; }
+        public string? UserKeyword { get; set; }
+        public int? ScheduledStatus { get; set; }
+        public int? WaitingQueueType { get; set; }
+    }
+
+    public class ReservationDashboardFilterOption
+    {
+        public int Value { get; set; }
+        public string Text { get; set; } = string.Empty;
+    }
+
+    public static class ReservationDashboardFilterOptions
+    {
+        public static List<ReservationDashboardFilterOption> GetScheduledStatusOptions()
+        {
+            return
+            [
+                new ReservationDashboardFilterOption
+                {
+                    Value = (int)ReservationStatus.Scheduled,
+                    Text = ReservationDisplayHelper.GetStatusText((int)ReservationStatus.Scheduled)
+                },
+                new ReservationDashboardFilterOption
+                {
+                    Value = (int)ReservationStatus.ScheduledQueueExpected,
+                    Text = ReservationDisplayHelper.GetStatusText((int)ReservationStatus.ScheduledQueueExpected)
+                }
+            ];
+        }
+
+        public static List<ReservationDashboardFilterOption> GetWaitingQueueTypeOptions()
+        {
+            return
+            [
+                new ReservationDashboardFilterOption
+                {
+                    Value = 1,
+                    Text = ReservationDisplayHelper.GetQueueTypeText(1)
+                },
+                new ReservationDashboardFilterOption
+                {
+                    Value = 2,
+                    Text = ReservationDisplayHelper.GetQueueTypeText(2)
+                }
+            ];
+        }
+    }
+
     // 單設備預約鏈，讓管理者把同一台設備的未來預約、使用中與排隊中一次看完。
     public class EquipmentReservationChainResponse
     {

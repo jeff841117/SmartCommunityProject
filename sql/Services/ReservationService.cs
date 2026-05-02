@@ -210,8 +210,9 @@ namespace sql.Services
             };
         }
 
-        public ReservationDashboardResponse GetReservationDashboard()
+        public ReservationDashboardResponse GetReservationDashboard(ReservationDashboardFilter? filter = null)
         {
+            var normalizedFilter = NormalizeDashboardFilter(filter);
             var taiwanTime = GetTaiwanTime();
             var activeReservations = _reservationRepository.GetAllActiveReservations()
                 .Select(r =>
@@ -228,11 +229,56 @@ namespace sql.Services
                 })
                 .ToList();
 
+            var scheduledReservations = _reservationRepository.GetAllScheduledReservations();
+            var waitingReservations = _reservationRepository.GetAllWaitingReservations();
+
+            // 先由 Repository 把後台總覽需要的完整資料查齊，
+            // 再由 Service 統一套用篩選，這樣條件規則會集中在同一層。
+            if (!string.IsNullOrWhiteSpace(normalizedFilter.EquipmentKeyword))
+            {
+                scheduledReservations = scheduledReservations
+                    .Where(r => r.EquipmentName.Contains(normalizedFilter.EquipmentKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                activeReservations = activeReservations
+                    .Where(r => r.EquipmentName.Contains(normalizedFilter.EquipmentKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                waitingReservations = waitingReservations
+                    .Where(r => r.EquipmentName.Contains(normalizedFilter.EquipmentKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(normalizedFilter.UserKeyword))
+            {
+                scheduledReservations = scheduledReservations
+                    .Where(r => r.UserId.Contains(normalizedFilter.UserKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                activeReservations = activeReservations
+                    .Where(r => r.UserId.Contains(normalizedFilter.UserKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                waitingReservations = waitingReservations
+                    .Where(r => r.UserId.Contains(normalizedFilter.UserKeyword, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+            }
+
+            if (normalizedFilter.ScheduledStatus.HasValue)
+            {
+                scheduledReservations = scheduledReservations
+                    .Where(r => r.Status == normalizedFilter.ScheduledStatus.Value)
+                    .ToList();
+            }
+
+            if (normalizedFilter.WaitingQueueType.HasValue)
+            {
+                waitingReservations = waitingReservations
+                    .Where(r => r.QueueType == normalizedFilter.WaitingQueueType.Value)
+                    .ToList();
+            }
+
             return new ReservationDashboardResponse
             {
-                ScheduledReservations = _reservationRepository.GetAllScheduledReservations(),
+                ScheduledReservations = scheduledReservations,
                 ActiveReservations = activeReservations,
-                WaitingReservations = _reservationRepository.GetAllWaitingReservations(),
+                WaitingReservations = waitingReservations,
                 ServerTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
             };
         }
@@ -354,6 +400,17 @@ namespace sql.Services
             {
                 return 0;
             }
+        }
+
+        private static ReservationDashboardFilter NormalizeDashboardFilter(ReservationDashboardFilter? filter)
+        {
+            return new ReservationDashboardFilter
+            {
+                EquipmentKeyword = filter?.EquipmentKeyword?.Trim(),
+                UserKeyword = filter?.UserKeyword?.Trim(),
+                ScheduledStatus = filter?.ScheduledStatus > 0 ? filter?.ScheduledStatus : null,
+                WaitingQueueType = filter?.WaitingQueueType > 0 ? filter?.WaitingQueueType : null
+            };
         }
     }
 

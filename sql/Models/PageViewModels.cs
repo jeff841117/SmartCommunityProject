@@ -22,6 +22,9 @@
 
     public class ReservationManagementPageViewModel
     {
+        public ReservationDashboardFilter Filter { get; set; } = new();
+        public List<ReservationDashboardFilterOption> ScheduledStatusOptions { get; set; } = new();
+        public List<ReservationDashboardFilterOption> WaitingQueueTypeOptions { get; set; } = new();
         public ReservationDashboardResponse Dashboard { get; set; } = new();
     }
 

@@ -50,7 +50,7 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
-        public IActionResult ReservationDashboard()
+        public IActionResult ReservationDashboard([FromQuery] ReservationDashboardFilter filter)
         {
             var accessRedirect = EnsureManagerRedirect();
             if (accessRedirect != null)
@@ -60,7 +60,10 @@ namespace sql.Controllers
 
             var viewModel = new ReservationManagementPageViewModel
             {
-                Dashboard = _reservationService.GetReservationDashboard()
+                Filter = filter,
+                ScheduledStatusOptions = ReservationDashboardFilterOptions.GetScheduledStatusOptions(),
+                WaitingQueueTypeOptions = ReservationDashboardFilterOptions.GetWaitingQueueTypeOptions(),
+                Dashboard = _reservationService.GetReservationDashboard(filter)
             };
 
             return View(viewModel);
