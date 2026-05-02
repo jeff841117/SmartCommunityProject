@@ -1,6 +1,8 @@
 ﻿using sql.Models;
 using sql.Repositories;
 
+using System.Text;
+
 namespace sql.Services
 {
     // ReservationService 是預約流程的協調中心。
@@ -402,6 +404,57 @@ namespace sql.Services
             }
         }
 
+        // 匯出沿用和後台總覽相同的篩選規則，
+        // 這樣管理者匯出的資料就會和畫面看到的內容一致。
+        public byte[] ExportReservationDashboardAsCsv(ReservationDashboardFilter? filter = null)
+        {
+            var dashboard = GetReservationDashboard(filter);
+            var csv = new StringBuilder();
+
+            csv.AppendLine("區塊,設備,會員,狀態或類型,時間一,時間二,附加資訊");
+
+            foreach (var reservation in dashboard.ScheduledReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv("未來預約"),
+                    EscapeCsv(reservation.EquipmentName),
+                    EscapeCsv(reservation.UserId),
+                    EscapeCsv(reservation.StatusText),
+                    EscapeCsv(reservation.ReservedStartTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv(reservation.ReservedEndTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv(reservation.RiskSummary)));
+            }
+
+            foreach (var reservation in dashboard.ActiveReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv("使用中"),
+                    EscapeCsv(reservation.EquipmentName),
+                    EscapeCsv(reservation.UserId),
+                    EscapeCsv(reservation.StatusText),
+                    EscapeCsv(reservation.StartTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv($"{reservation.RemainingTime} 分鐘"),
+                    EscapeCsv(string.Empty)));
+            }
+
+            foreach (var queue in dashboard.WaitingReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv("排隊中"),
+                    EscapeCsv(queue.EquipmentName),
+                    EscapeCsv(queue.UserId),
+                    EscapeCsv(queue.QueueTypeText),
+                    EscapeCsv(queue.QueueTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv($"第 {queue.Position} 位"),
+                    EscapeCsv(string.Empty)));
+            }
+
+            // 加上 UTF-8 BOM，讓 Excel 開啟時能正確顯示中文。
+            var bom = Encoding.UTF8.GetPreamble();
+            var content = Encoding.UTF8.GetBytes(csv.ToString());
+            return [.. bom, .. content];
+        }
+
         private static ReservationDashboardFilter NormalizeDashboardFilter(ReservationDashboardFilter? filter)
         {
             return new ReservationDashboardFilter
@@ -411,6 +464,12 @@ namespace sql.Services
                 ScheduledStatus = filter?.ScheduledStatus > 0 ? filter?.ScheduledStatus : null,
                 WaitingQueueType = filter?.WaitingQueueType > 0 ? filter?.WaitingQueueType : null
             };
+        }
+
+        private static string EscapeCsv(string value)
+        {
+            var normalized = value.Replace("\"", "\"\"");
+            return $"\"{normalized}\"";
         }
     }
 

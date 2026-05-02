@@ -69,6 +69,19 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
+        public IActionResult ExportReservationDashboard([FromQuery] ReservationDashboardFilter filter)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _reservationService.ExportReservationDashboardAsCsv(filter);
+            var fileName = $"reservation-dashboard-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
+        }
+
         [HttpGet]
         public JsonResult GetEquipmentReservationChain(byte equipmentId)
         {

@@ -62,6 +62,12 @@
                     <div class="col-12 d-flex gap-2">
                         <button type="submit" class="btn btn-primary">套用篩選</button>
                         <a href="/Equipment/ReservationDashboard" class="btn btn-outline-secondary">清除條件</a>
+                        <a asp-action="ExportReservationDashboard"
+                           asp-route-EquipmentKeyword="@Model.Filter.EquipmentKeyword"
+                           asp-route-UserKeyword="@Model.Filter.UserKeyword"
+                           asp-route-ScheduledStatus="@Model.Filter.ScheduledStatus"
+                           asp-route-WaitingQueueType="@Model.Filter.WaitingQueueType"
+                           class="btn btn-success">匯出 CSV</a>
                     </div>
                 </form>
             </div>
