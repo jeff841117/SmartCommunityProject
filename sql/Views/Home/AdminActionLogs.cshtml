@@ -1,6 +1,7 @@
 @model sql.Models.AdminActionLogPageViewModel
 @{
     ViewData["Title"] = "管理者操作紀錄";
+    var logs = Model.QueryResult.Items;
 }
 
 <link href="~/css/indexHome.css" rel="stylesheet" asp-append-version="true">
@@ -48,8 +49,8 @@
                 <input asp-for="Filter.Keyword" class="form-control" placeholder="原因或目標編號">
             </div>
             <div class="col-md-2">
-                <label class="form-label">筆數上限</label>
-                <input asp-for="Filter.Take" type="number" min="1" max="500" class="form-control">
+                <label class="form-label">每頁筆數</label>
+                <input asp-for="Filter.PageSize" type="number" min="1" max="100" class="form-control">
             </div>
             <div class="col-md-3">
                 <label class="form-label">開始日期</label>
@@ -59,15 +60,32 @@
                 <label class="form-label">結束日期</label>
                 <input asp-for="Filter.EndDate" type="date" class="form-control">
             </div>
+            <input asp-for="Filter.Page" type="hidden" value="1">
             <div class="col-md-6 d-flex align-items-end gap-2">
                 <button type="submit" class="btn btn-primary">搜尋</button>
                 <a href="/Home/AdminActionLogs" class="btn btn-secondary">清除條件</a>
+                <a asp-action="ExportAdminActionLogs"
+                   asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                   asp-route-ActionType="@Model.Filter.ActionType"
+                   asp-route-TargetType="@Model.Filter.TargetType"
+                   asp-route-Keyword="@Model.Filter.Keyword"
+                   asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                   asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                   asp-route-PageSize="@Model.Filter.PageSize"
+                   class="btn btn-success">匯出 CSV</a>
             </div>
         </form>
     </div>
 
     <div class="table-container">
-        @if (Model.Logs.Any())
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                共找到 <strong>@Model.QueryResult.TotalCount</strong> 筆紀錄，
+                目前第 <strong>@Model.QueryResult.Page</strong> / <strong>@Math.Max(Model.QueryResult.TotalPages, 1)</strong> 頁
+            </div>
+        </div>
+
+        @if (logs.Any())
         {
             <table class="table table-hover">
                 <thead>
@@ -82,7 +100,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var log in Model.Logs)
+                    @foreach (var log in logs)
                     {
                         <tr>
                             <td>@log.Id</td>
@@ -96,6 +114,38 @@
                     }
                 </tbody>
             </table>
+
+            <nav aria-label="管理者操作紀錄分頁">
+                <ul class="pagination">
+                    <li class="page-item @(Model.QueryResult.HasPreviousPage ? "" : "disabled")">
+                        <a class="page-link"
+                           asp-action="AdminActionLogs"
+                           asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                           asp-route-ActionType="@Model.Filter.ActionType"
+                           asp-route-TargetType="@Model.Filter.TargetType"
+                           asp-route-Keyword="@Model.Filter.Keyword"
+                           asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-Page="@(Model.QueryResult.Page - 1)"
+                           asp-route-PageSize="@Model.Filter.PageSize">上一頁</a>
+                    </li>
+                    <li class="page-item disabled">
+                        <span class="page-link">@Model.QueryResult.Page / @Math.Max(Model.QueryResult.TotalPages, 1)</span>
+                    </li>
+                    <li class="page-item @(Model.QueryResult.HasNextPage ? "" : "disabled")">
+                        <a class="page-link"
+                           asp-action="AdminActionLogs"
+                           asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                           asp-route-ActionType="@Model.Filter.ActionType"
+                           asp-route-TargetType="@Model.Filter.TargetType"
+                           asp-route-Keyword="@Model.Filter.Keyword"
+                           asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-Page="@(Model.QueryResult.Page + 1)"
+                           asp-route-PageSize="@Model.Filter.PageSize">下一頁</a>
+                    </li>
+                </ul>
+            </nav>
         }
         else
         {

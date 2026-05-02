@@ -30,6 +30,6 @@
         public AdminActionLogFilter Filter { get; set; } = new();
         public List<AdminActionFilterOption> ActionTypeOptions { get; set; } = new();
         public List<AdminActionFilterOption> TargetTypeOptions { get; set; } = new();
-        public List<AdminActionLogListItem> Logs { get; set; } = new();
+        public AdminActionLogQueryResult QueryResult { get; set; } = new();
     }
 }

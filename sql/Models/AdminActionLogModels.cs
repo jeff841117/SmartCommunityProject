@@ -1,7 +1,7 @@
 namespace sql.Models
 {
     // 這是寫入資料庫時使用的最小日誌模型。
-    // 目的是讓 Service 層只要描述「誰做了什麼」，Repository 就能負責存入資料表。
+    // Service 層只要描述「誰做了什麼」，Repository 就能負責存入資料表。
     public class AdminActionLogEntry
     {
         public int AdminUserId { get; set; }
@@ -11,8 +11,8 @@ namespace sql.Models
         public string? Reason { get; set; }
     }
 
-    // 這是後台列表頁使用的顯示模型。
-    // 它和寫入模型不同，會多帶顯示用文字，避免 View 自己再判斷 enum。
+    // 這是列表頁顯示用模型。
+    // 這裡會直接帶好顯示文字，避免 View 自己再判斷 enum。
     public class AdminActionLogListItem
     {
         public int Id { get; set; }
@@ -27,7 +27,8 @@ namespace sql.Models
         public DateTime CreatedAt { get; set; }
     }
 
-    // 篩選模型放在同一份檔案中，方便後台查詢頁與 Repository 共用。
+    // 後台查詢條件統一集中在這裡。
+    // 這樣 controller、service、repository 都能共用同一份搜尋條件。
     public class AdminActionLogFilter
     {
         public string? AdminKeyword { get; set; }
@@ -36,10 +37,27 @@ namespace sql.Models
         public string? Keyword { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
-        public int Take { get; set; } = 100;
+        public int Page { get; set; } = 1;
+        public int PageSize { get; set; } = 20;
     }
 
-    // 這個小模型是為了讓下拉選單用同一種資料格式。
+    // 查詢結果除了資料本身，也要一起帶分頁資訊，這樣頁面才能知道總頁數。
+    public class AdminActionLogQueryResult
+    {
+        public List<AdminActionLogListItem> Items { get; set; } = new();
+        public int TotalCount { get; set; }
+        public int Page { get; set; }
+        public int PageSize { get; set; }
+
+        public int TotalPages => PageSize <= 0
+            ? 1
+            : (int)Math.Ceiling(TotalCount / (double)PageSize);
+
+        public bool HasPreviousPage => Page > 1;
+        public bool HasNextPage => Page < TotalPages;
+    }
+
+    // 下拉選單統一使用這個小模型。
     public class AdminActionFilterOption
     {
         public int Value { get; set; }

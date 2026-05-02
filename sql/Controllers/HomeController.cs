@@ -54,10 +54,23 @@ namespace sql.Controllers
                 Filter = filter,
                 ActionTypeOptions = AdminActionLogDisplayHelper.GetActionTypeOptions(),
                 TargetTypeOptions = AdminActionLogDisplayHelper.GetTargetTypeOptions(),
-                Logs = _adminActionLogService.GetRecentLogs(filter)
+                QueryResult = _adminActionLogService.GetLogs(filter)
             };
 
             return View(viewModel);
+        }
+
+        public IActionResult ExportAdminActionLogs([FromQuery] AdminActionLogFilter filter)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _adminActionLogService.ExportLogsAsCsv(filter);
+            var fileName = $"admin-action-logs-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
         }
 
         [HttpPost]
