@@ -8,10 +8,14 @@ namespace sql.Services
     public class QueueService
     {
         private readonly QueueRepository _queueRepository;
+        private readonly AdminActionLogService _adminActionLogService;
 
-        public QueueService(QueueRepository queueRepository)
+        public QueueService(
+            QueueRepository queueRepository,
+            AdminActionLogService adminActionLogService)
         {
             _queueRepository = queueRepository;
+            _adminActionLogService = adminActionLogService;
         }
 
         public void ProcessAllQueues()
@@ -85,7 +89,13 @@ namespace sql.Services
                 return false;
             }
 
-            return _queueRepository.ForceCancelQueue(queueId, currentUser.UserId);
+            var success = _queueRepository.ForceCancelQueue(queueId, currentUser.UserId);
+            if (success && currentUser.UserId.HasValue)
+            {
+                _adminActionLogService.LogForceCancelQueue(currentUser.UserId.Value, queueId);
+            }
+
+            return success;
         }
     }
 }

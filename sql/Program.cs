@@ -27,6 +27,7 @@ builder.Services.AddScoped<DBmanager>();
 // 目的不是一次取代 DBmanager，而是把各模組的資料操作慢慢搬出來。
 builder.Services.AddScoped<EquipmentRepository>();
 builder.Services.AddScoped<AccountRepository>();
+builder.Services.AddScoped<AdminActionLogRepository>();
 builder.Services.AddScoped<ReservationRepository>();
 builder.Services.AddScoped<QueueRepository>();
 
@@ -39,6 +40,7 @@ builder.Services.AddScoped<PasswordResetEmailBridge>();
 // Service 層負責業務流程，Repository 層負責資料存取。
 builder.Services.AddScoped<EquipmentService>();
 builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<AdminActionLogService>();
 builder.Services.AddScoped<ReservationService>();
 builder.Services.AddScoped<QueueService>();
 builder.Services.AddScoped<FutureReservationPlanningService>();

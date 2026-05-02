@@ -9,10 +9,14 @@ namespace sql.Services
     public class ReservationService
     {
         private readonly ReservationRepository _reservationRepository;
+        private readonly AdminActionLogService _adminActionLogService;
 
-        public ReservationService(ReservationRepository reservationRepository)
+        public ReservationService(
+            ReservationRepository reservationRepository,
+            AdminActionLogService adminActionLogService)
         {
             _reservationRepository = reservationRepository;
+            _adminActionLogService = adminActionLogService;
         }
 
         // 建立預約前，先確認是否已登入。
@@ -73,7 +77,13 @@ namespace sql.Services
                 return false;
             }
 
-            return _reservationRepository.ForceEndUsage(reservationId, currentUser.UserId);
+            var success = _reservationRepository.ForceEndUsage(reservationId, currentUser.UserId);
+            if (success && currentUser.UserId.HasValue)
+            {
+                _adminActionLogService.LogForceEndUsage(currentUser.UserId.Value, reservationId);
+            }
+
+            return success;
         }
 
         public bool ForceCancelScheduledReservation(int reservationId, CurrentUser currentUser)
@@ -83,7 +93,13 @@ namespace sql.Services
                 return false;
             }
 
-            return _reservationRepository.ForceCancelScheduledReservation(reservationId, currentUser.UserId);
+            var success = _reservationRepository.ForceCancelScheduledReservation(reservationId, currentUser.UserId);
+            if (success && currentUser.UserId.HasValue)
+            {
+                _adminActionLogService.LogForceCancelScheduledReservation(currentUser.UserId.Value, reservationId);
+            }
+
+            return success;
         }
 
         // 管理者調整時段時，仍沿用和一般未來預約相同的推算規則。
@@ -101,7 +117,18 @@ namespace sql.Services
                 };
             }
 
-            return _reservationRepository.RescheduleScheduledReservation(form, currentUser.UserId);
+            var result = _reservationRepository.RescheduleScheduledReservation(form, currentUser.UserId);
+            if (result.Success && currentUser.UserId.HasValue)
+            {
+                _adminActionLogService.LogForceRescheduleScheduledReservation(
+                    currentUser.UserId.Value,
+                    form.ReservationId,
+                    form.ReservationDate,
+                    form.SelectedSlotStartTime,
+                    result.QueueExpected);
+            }
+
+            return result;
         }
 
         public ReservationAdjustmentPreviewResponse PreviewRescheduleScheduledReservation(
