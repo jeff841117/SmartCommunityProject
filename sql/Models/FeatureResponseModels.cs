@@ -1,7 +1,8 @@
 namespace sql.Models
 {
-    // 這份檔案放的是「功能層會共用的回應資料模型」。
-    // 它們不一定直接對應資料表，而是對應畫面或 API 需要的資料形狀。
+    // 這份檔案集中放「功能層回應模型」。
+    // 它們通常是 Controller / Service / Repository 之間共用的資料形狀，
+    // 目的是讓前後端看到的欄位更穩定，而不是每次都臨時拼匿名物件。
     public class UserReservationsResponse
     {
         public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
@@ -11,8 +12,8 @@ namespace sql.Models
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 
-    // 未來預約清單專用。
-    // 和進行中預約分開，前端比較容易決定顯示什麼按鈕。
+    // 未來預約資料除了基本時段與狀態，第二階段開始也會帶出風險摘要，
+    // 讓前台與後台都能直接知道這筆預約是正常保留，還是預估到時仍需排隊。
     public class ScheduledReservationItem
     {
         public int Id { get; set; }
@@ -26,12 +27,15 @@ namespace sql.Models
         public int Status { get; set; }
         public string StatusText { get; set; } = string.Empty;
         public string StatusCssClass { get; set; } = string.Empty;
+        public bool QueueExpected { get; set; }
+        public int ReservedCapacityCount { get; set; }
+        public int ForecastWaitingCount { get; set; }
+        public string RiskSummary { get; set; } = string.Empty;
     }
 
-    // 預約頁在點「立即預約」前，會先用這份資料判斷：
-    // 1. 現在能不能預約
-    // 2. 設備有沒有滿
-    // 3. 目前畫面要顯示什麼提示
+    // 設備可用性檢查結果。
+    // 這類模型的重點是讓前端一次拿到目前是否可預約、是否已滿、
+    // 以及相關的開放時間與等待估算基礎資料。
     public class EquipmentAvailabilityResponse
     {
         public bool IsAvailable { get; set; }
@@ -77,7 +81,7 @@ namespace sql.Models
         public int Position { get; set; }
     }
 
-    // 管理者總覽頁會用到這份資料，讓後台一次看到目前的預約主狀態。
+    // 後台總覽頁使用的彙整模型。
     public class ReservationDashboardResponse
     {
         public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
@@ -86,6 +90,7 @@ namespace sql.Models
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 
+    // 單設備預約鏈，讓管理者把同一台設備的未來預約、使用中與排隊中一次看完。
     public class EquipmentReservationChainResponse
     {
         public byte EquipmentId { get; set; }

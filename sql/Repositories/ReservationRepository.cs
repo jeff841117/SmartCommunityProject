@@ -690,22 +690,7 @@ namespace sql.Repositories
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                scheduledReservations.Add(new ScheduledReservationItem
-                {
-                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
-                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
-                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
-                    ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
-                    ReservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime")),
-                    ReservedEndTime = reader.GetDateTime(reader.GetOrdinal("ReservedEndTime")),
-                    DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
-                        ? 0
-                        : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
-                    Status = reader.GetInt32(reader.GetOrdinal("Status")),
-                    StatusText = ReservationDisplayHelper.GetStatusText(reader.GetInt32(reader.GetOrdinal("Status"))),
-                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(reader.GetInt32(reader.GetOrdinal("Status")))
-                });
+                scheduledReservations.Add(CreateScheduledReservationItem(reader));
             }
 
             return scheduledReservations;
@@ -831,23 +816,7 @@ namespace sql.Repositories
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
-                var status = reader.GetInt32(reader.GetOrdinal("Status"));
-                scheduledReservations.Add(new ScheduledReservationItem
-                {
-                    Id = reader.GetInt32(reader.GetOrdinal("Id")),
-                    EquipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId")),
-                    EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
-                    UserId = reader.GetString(reader.GetOrdinal("UserId")),
-                    ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
-                    ReservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime")),
-                    ReservedEndTime = reader.GetDateTime(reader.GetOrdinal("ReservedEndTime")),
-                    DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
-                        ? 0
-                        : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
-                    Status = status,
-                    StatusText = ReservationDisplayHelper.GetStatusText(status),
-                    StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(status)
-                });
+                scheduledReservations.Add(CreateScheduledReservationItem(reader));
             }
 
             return scheduledReservations;
@@ -1390,6 +1359,54 @@ namespace sql.Repositories
                 reservedEndTime,
                 forecast,
                 forecast.Message);
+        }
+
+        private ScheduledReservationItem CreateScheduledReservationItem(SqlDataReader reader)
+        {
+            var reservationId = reader.GetInt32(reader.GetOrdinal("Id"));
+            var equipmentId = reader.GetByte(reader.GetOrdinal("EquipmentId"));
+            var reservedStartTime = reader.GetDateTime(reader.GetOrdinal("ReservedStartTime"));
+            var reservedEndTime = reader.GetDateTime(reader.GetOrdinal("ReservedEndTime"));
+            var status = reader.GetInt32(reader.GetOrdinal("Status"));
+            var equipment = GetEquipmentById(equipmentId);
+
+            var forecast = equipment == null
+                ? new FutureReservationForecast
+                {
+                    Message = "無法取得設備資料，暫時無法估算風險摘要"
+                }
+                : BuildFutureReservationForecast(equipment, reservedStartTime, reservedEndTime, reservationId);
+
+            return new ScheduledReservationItem
+            {
+                Id = reservationId,
+                EquipmentId = equipmentId,
+                EquipmentName = reader.GetString(reader.GetOrdinal("equipmentName")),
+                UserId = reader.GetString(reader.GetOrdinal("UserId")),
+                ReservationTime = reader.GetDateTime(reader.GetOrdinal("ReservationTime")),
+                ReservedStartTime = reservedStartTime,
+                ReservedEndTime = reservedEndTime,
+                DurationMinutes = reader.IsDBNull(reader.GetOrdinal("DurationMinutes"))
+                    ? 0
+                    : reader.GetInt32(reader.GetOrdinal("DurationMinutes")),
+                Status = status,
+                StatusText = ReservationDisplayHelper.GetStatusText(status),
+                StatusCssClass = ReservationDisplayHelper.GetStatusCssClass(status),
+                QueueExpected = status == (int)ReservationStatus.ScheduledQueueExpected || forecast.QueueExpected,
+                ReservedCapacityCount = forecast.ReservedCapacityCount,
+                ForecastWaitingCount = forecast.ForecastWaitingCount,
+                RiskSummary = BuildScheduledReservationRiskSummary(status, forecast)
+            };
+        }
+
+        private static string BuildScheduledReservationRiskSummary(int status, FutureReservationForecast forecast)
+        {
+            if (status == (int)ReservationStatus.ScheduledQueueExpected || forecast.QueueExpected)
+            {
+                return $"目前已保留 {forecast.ReservedCapacityCount} 個名額，推算前方仍可能有 {forecast.ForecastWaitingCount} 人等待，屆時可能轉入排隊尾端。";
+            }
+
+            return $"目前已保留 {forecast.ReservedCapacityCount} 個名額，依現況推算可正常開始使用。";
         }
 
         // 先把過期預約整理成清單，再進行更新，
