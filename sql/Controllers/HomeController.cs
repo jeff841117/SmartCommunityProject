@@ -41,7 +41,7 @@ namespace sql.Controllers
             return View(viewModel);
         }
 
-        public IActionResult AdminActionLogs()
+        public IActionResult AdminActionLogs([FromQuery] AdminActionLogFilter filter)
         {
             var accessRedirect = EnsureManagerRedirect();
             if (accessRedirect != null)
@@ -51,7 +51,10 @@ namespace sql.Controllers
 
             var viewModel = new AdminActionLogPageViewModel
             {
-                Logs = _adminActionLogService.GetRecentLogs()
+                Filter = filter,
+                ActionTypeOptions = AdminActionLogDisplayHelper.GetActionTypeOptions(),
+                TargetTypeOptions = AdminActionLogDisplayHelper.GetTargetTypeOptions(),
+                Logs = _adminActionLogService.GetRecentLogs(filter)
             };
 
             return View(viewModel);

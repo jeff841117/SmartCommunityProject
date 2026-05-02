@@ -1,11 +1,13 @@
+using System.Text;
 using Microsoft.Data.SqlClient;
 using sql.Models;
 
 namespace sql.Repositories
 {
-    // 這個 Repository 專門處理管理者操作紀錄。
-    // 目前先涵蓋「寫入」與「查詢列表」兩種責任，
-    // 後面若要加詳細頁或條件搜尋，也可以繼續往這裡擴充。
+    // 管理者操作紀錄 Repository 的責任很單純：
+    // 1. 寫入操作紀錄
+    // 2. 依篩選條件查詢操作紀錄
+    // 這樣後面如果要改成分頁或匯出，只需要從這層擴充。
     public class AdminActionLogRepository
     {
         private readonly DBmanager _dbManager;
@@ -49,26 +51,15 @@ namespace sql.Repositories
             cmd.ExecuteNonQuery();
         }
 
-        public List<AdminActionLogListItem> GetRecentLogs(int take = 100)
+        public List<AdminActionLogListItem> GetRecentLogs(AdminActionLogFilter filter)
         {
             var logs = new List<AdminActionLogListItem>();
+            var normalizedFilter = NormalizeFilter(filter);
 
             using var connection = _dbManager.CreateConnection();
-            using var cmd = new SqlCommand(@"
-                SELECT TOP (@Take)
-                       l.Id,
-                       l.AdminUserId,
-                       ISNULL(m.userName, CONCAT('管理者#', l.AdminUserId)) AS AdminUserName,
-                       l.ActionType,
-                       l.TargetType,
-                       l.TargetId,
-                       l.Reason,
-                       l.CreatedAt
-                FROM AdminActionLogs l
-                LEFT JOIN member m ON l.AdminUserId = m.id
-                ORDER BY l.CreatedAt DESC, l.Id DESC", connection);
+            using var cmd = new SqlCommand(BuildQuery(normalizedFilter), connection);
+            AddFilterParameters(cmd, normalizedFilter);
 
-            cmd.Parameters.AddWithValue("@Take", take);
             connection.Open();
 
             using var reader = cmd.ExecuteReader();
@@ -95,6 +86,121 @@ namespace sql.Repositories
             }
 
             return logs;
+        }
+
+        private static AdminActionLogFilter NormalizeFilter(AdminActionLogFilter filter)
+        {
+            return new AdminActionLogFilter
+            {
+                AdminKeyword = filter.AdminKeyword?.Trim(),
+                ActionType = filter.ActionType > 0 ? filter.ActionType : null,
+                TargetType = filter.TargetType > 0 ? filter.TargetType : null,
+                Keyword = filter.Keyword?.Trim(),
+                StartDate = filter.StartDate?.Date,
+                EndDate = filter.EndDate?.Date,
+                Take = filter.Take <= 0 ? 100 : Math.Min(filter.Take, 500)
+            };
+        }
+
+        private static string BuildQuery(AdminActionLogFilter filter)
+        {
+            var sql = new StringBuilder(@"
+                SELECT TOP (@Take)
+                       l.Id,
+                       l.AdminUserId,
+                       ISNULL(m.userName, CONCAT('管理員#', l.AdminUserId)) AS AdminUserName,
+                       l.ActionType,
+                       l.TargetType,
+                       l.TargetId,
+                       l.Reason,
+                       l.CreatedAt
+                FROM AdminActionLogs l
+                LEFT JOIN member m ON l.AdminUserId = m.id
+                WHERE 1 = 1");
+
+            if (!string.IsNullOrWhiteSpace(filter.AdminKeyword))
+            {
+                sql.Append(@"
+                  AND
+                  (
+                      m.userName LIKE @AdminKeyword
+                      OR CONVERT(NVARCHAR(20), l.AdminUserId) LIKE @AdminKeyword
+                  )");
+            }
+
+            if (filter.ActionType.HasValue)
+            {
+                sql.Append(@"
+                  AND l.ActionType = @ActionType");
+            }
+
+            if (filter.TargetType.HasValue)
+            {
+                sql.Append(@"
+                  AND l.TargetType = @TargetType");
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Keyword))
+            {
+                sql.Append(@"
+                  AND
+                  (
+                      ISNULL(l.Reason, '') LIKE @Keyword
+                      OR CONVERT(NVARCHAR(20), l.TargetId) LIKE @Keyword
+                  )");
+            }
+
+            if (filter.StartDate.HasValue)
+            {
+                sql.Append(@"
+                  AND l.CreatedAt >= @StartDate");
+            }
+
+            if (filter.EndDate.HasValue)
+            {
+                sql.Append(@"
+                  AND l.CreatedAt < @EndExclusive");
+            }
+
+            sql.Append(@"
+                ORDER BY l.CreatedAt DESC, l.Id DESC");
+
+            return sql.ToString();
+        }
+
+        private static void AddFilterParameters(SqlCommand cmd, AdminActionLogFilter filter)
+        {
+            cmd.Parameters.AddWithValue("@Take", filter.Take);
+
+            if (!string.IsNullOrWhiteSpace(filter.AdminKeyword))
+            {
+                cmd.Parameters.AddWithValue("@AdminKeyword", $"%{filter.AdminKeyword}%");
+            }
+
+            if (filter.ActionType.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@ActionType", filter.ActionType.Value);
+            }
+
+            if (filter.TargetType.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@TargetType", filter.TargetType.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Keyword))
+            {
+                cmd.Parameters.AddWithValue("@Keyword", $"%{filter.Keyword}%");
+            }
+
+            if (filter.StartDate.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@StartDate", filter.StartDate.Value);
+            }
+
+            if (filter.EndDate.HasValue)
+            {
+                cmd.Parameters.AddWithValue("@EndExclusive", filter.EndDate.Value.AddDays(1));
+            }
         }
     }
 }

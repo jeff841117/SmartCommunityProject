@@ -3,9 +3,9 @@ using sql.Repositories;
 
 namespace sql.Services
 {
-    // 這層負責把管理者操作意圖整理成可讀的日誌內容。
-    // Controller、ReservationService、QueueService 不需要自己拼 action type 與 reason，
-    // 只要呼叫對應方法即可。
+    // 這個 Service 主要做兩件事：
+    // 1. 把管理者操作轉成一致的日誌格式
+    // 2. 提供後台查詢頁一個乾淨的查詢入口
     public class AdminActionLogService
     {
         private readonly AdminActionLogRepository _adminActionLogRepository;
@@ -23,7 +23,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceEndUsage,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = "管理者於後台強制結束使用"
+                Reason = "管理者強制結束使用中預約"
             });
         }
 
@@ -35,7 +35,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceCancelScheduledReservation,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = "管理者於後台取消未來預約"
+                Reason = "管理者取消未來預約"
             });
         }
 
@@ -46,7 +46,7 @@ namespace sql.Services
             string selectedSlotStartTime,
             bool queueExpected)
         {
-            var queueHint = queueExpected ? "，系統推算到時仍可能需要排隊" : string.Empty;
+            var queueHint = queueExpected ? "，調整後預估仍需排隊" : string.Empty;
 
             WriteLog(new AdminActionLogEntry
             {
@@ -54,7 +54,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceRescheduleScheduledReservation,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = $"管理者將預約改到 {reservationDate} {selectedSlotStartTime}{queueHint}"
+                Reason = $"管理者調整未來預約至 {reservationDate} {selectedSlotStartTime}{queueHint}"
             });
         }
 
@@ -66,13 +66,13 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceCancelQueue,
                 TargetType = (int)AdminActionTargetType.WaitingQueue,
                 TargetId = queueId,
-                Reason = "管理者於後台移除排隊紀錄"
+                Reason = "管理者移除排隊紀錄"
             });
         }
 
-        public List<AdminActionLogListItem> GetRecentLogs(int take = 100)
+        public List<AdminActionLogListItem> GetRecentLogs(AdminActionLogFilter? filter = null)
         {
-            return _adminActionLogRepository.GetRecentLogs(take);
+            return _adminActionLogRepository.GetRecentLogs(filter ?? new AdminActionLogFilter());
         }
 
         private void WriteLog(AdminActionLogEntry entry)
@@ -83,8 +83,8 @@ namespace sql.Services
             }
             catch (Exception ex)
             {
-                // 操作紀錄不應阻斷主要功能，所以這裡只記錄主控台訊息。
-                Console.WriteLine($"寫入管理者操作紀錄時發生錯誤: {ex.Message}");
+                // 寫日誌失敗不應阻擋主要功能，所以這裡只記錄錯誤。
+                Console.WriteLine($"寫入管理者操作日誌失敗：{ex.Message}");
             }
         }
     }

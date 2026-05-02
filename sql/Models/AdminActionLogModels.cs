@@ -1,7 +1,7 @@
 namespace sql.Models
 {
-    // 管理者操作紀錄的基本寫入模型。
-    // 這一層先專注在把資料寫進資料庫，後面若要延伸查詢欄位，再另外補展示模型。
+    // 這是寫入資料庫時使用的最小日誌模型。
+    // 目的是讓 Service 層只要描述「誰做了什麼」，Repository 就能負責存入資料表。
     public class AdminActionLogEntry
     {
         public int AdminUserId { get; set; }
@@ -11,8 +11,8 @@ namespace sql.Models
         public string? Reason { get; set; }
     }
 
-    // 管理者操作紀錄展示模型。
-    // 後台查詢頁直接使用這個模型，避免 View 自己再去猜數字代表什麼。
+    // 這是後台列表頁使用的顯示模型。
+    // 它和寫入模型不同，會多帶顯示用文字，避免 View 自己再判斷 enum。
     public class AdminActionLogListItem
     {
         public int Id { get; set; }
@@ -25,6 +25,25 @@ namespace sql.Models
         public int TargetId { get; set; }
         public string? Reason { get; set; }
         public DateTime CreatedAt { get; set; }
+    }
+
+    // 篩選模型放在同一份檔案中，方便後台查詢頁與 Repository 共用。
+    public class AdminActionLogFilter
+    {
+        public string? AdminKeyword { get; set; }
+        public int? ActionType { get; set; }
+        public int? TargetType { get; set; }
+        public string? Keyword { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+        public int Take { get; set; } = 100;
+    }
+
+    // 這個小模型是為了讓下拉選單用同一種資料格式。
+    public class AdminActionFilterOption
+    {
+        public int Value { get; set; }
+        public string Text { get; set; } = string.Empty;
     }
 
     public enum AdminActionType
@@ -63,6 +82,50 @@ namespace sql.Models
                 (int)AdminActionTargetType.WaitingQueue => "排隊",
                 _ => "未知目標"
             };
+        }
+
+        public static List<AdminActionFilterOption> GetActionTypeOptions()
+        {
+            return
+            [
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionType.ForceEndUsage,
+                    Text = GetActionTypeText((int)AdminActionType.ForceEndUsage)
+                },
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionType.ForceCancelScheduledReservation,
+                    Text = GetActionTypeText((int)AdminActionType.ForceCancelScheduledReservation)
+                },
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionType.ForceRescheduleScheduledReservation,
+                    Text = GetActionTypeText((int)AdminActionType.ForceRescheduleScheduledReservation)
+                },
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionType.ForceCancelQueue,
+                    Text = GetActionTypeText((int)AdminActionType.ForceCancelQueue)
+                }
+            ];
+        }
+
+        public static List<AdminActionFilterOption> GetTargetTypeOptions()
+        {
+            return
+            [
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionTargetType.Reservation,
+                    Text = GetTargetTypeText((int)AdminActionTargetType.Reservation)
+                },
+                new AdminActionFilterOption
+                {
+                    Value = (int)AdminActionTargetType.WaitingQueue,
+                    Text = GetTargetTypeText((int)AdminActionTargetType.WaitingQueue)
+                }
+            ];
         }
     }
 }

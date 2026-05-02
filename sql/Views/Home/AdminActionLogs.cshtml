@@ -8,13 +8,62 @@
 <div class="header-section">
     <div class="container">
         <h1 class="display-4 fw-bold">管理者操作紀錄</h1>
-        <p class="lead">查看後台干預預約、排隊流程的最近紀錄</p>
+        <p class="lead">查看後台對預約、排隊與未來時段的人工干預紀錄</p>
     </div>
 </div>
 
 <div class="container">
     <div class="button-container">
-        <a href="/Home/Index" class="add-equipment-btn">回到帳號管理</a>
+        <a href="/Home/Index" class="add-equipment-btn">返回帳號管理</a>
+    </div>
+
+    <div class="table-container mb-4">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">管理者關鍵字</label>
+                <input asp-for="Filter.AdminKeyword" class="form-control" placeholder="帳號或管理者編號">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">操作類型</label>
+                <select asp-for="Filter.ActionType" class="form-select">
+                    <option value="">全部</option>
+                    @foreach (var option in Model.ActionTypeOptions)
+                    {
+                        <option value="@option.Value">@option.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">目標類型</label>
+                <select asp-for="Filter.TargetType" class="form-select">
+                    <option value="">全部</option>
+                    @foreach (var option in Model.TargetTypeOptions)
+                    {
+                        <option value="@option.Value">@option.Text</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">關鍵字</label>
+                <input asp-for="Filter.Keyword" class="form-control" placeholder="原因或目標編號">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">筆數上限</label>
+                <input asp-for="Filter.Take" type="number" min="1" max="500" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">開始日期</label>
+                <input asp-for="Filter.StartDate" type="date" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">結束日期</label>
+                <input asp-for="Filter.EndDate" type="date" class="form-control">
+            </div>
+            <div class="col-md-6 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary">搜尋</button>
+                <a href="/Home/AdminActionLogs" class="btn btn-secondary">清除條件</a>
+            </div>
+        </form>
     </div>
 
     <div class="table-container">
@@ -24,12 +73,12 @@
                 <thead>
                     <tr>
                         <th>紀錄編號</th>
-                        <th>操作時間</th>
+                        <th>時間</th>
                         <th>管理者</th>
                         <th>操作類型</th>
                         <th>目標類型</th>
                         <th>目標編號</th>
-                        <th>原因摘要</th>
+                        <th>原因說明</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -42,7 +91,7 @@
                             <td>@log.ActionTypeText</td>
                             <td>@log.TargetTypeText</td>
                             <td>@log.TargetId</td>
-                            <td>@(string.IsNullOrWhiteSpace(log.Reason) ? "無補充原因" : log.Reason)</td>
+                            <td>@(string.IsNullOrWhiteSpace(log.Reason) ? "未填寫說明" : log.Reason)</td>
                         </tr>
                     }
                 </tbody>
@@ -51,7 +100,7 @@
         else
         {
             <div class="alert alert-secondary mb-0">
-                目前還沒有管理者操作紀錄。
+                目前查無符合條件的管理者操作紀錄。
             </div>
         }
     </div>

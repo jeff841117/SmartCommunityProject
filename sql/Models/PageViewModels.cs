@@ -27,6 +27,9 @@
 
     public class AdminActionLogPageViewModel
     {
+        public AdminActionLogFilter Filter { get; set; } = new();
+        public List<AdminActionFilterOption> ActionTypeOptions { get; set; } = new();
+        public List<AdminActionFilterOption> TargetTypeOptions { get; set; } = new();
         public List<AdminActionLogListItem> Logs { get; set; } = new();
     }
 }
