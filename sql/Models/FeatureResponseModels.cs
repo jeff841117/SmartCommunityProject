@@ -87,7 +87,21 @@ namespace sql.Models
         public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
         public List<ActiveReservationItem> ActiveReservations { get; set; } = new();
         public List<WaitingReservationItem> WaitingReservations { get; set; } = new();
+        public List<EquipmentDashboardSummaryItem> EquipmentSummaries { get; set; } = new();
         public string ServerTaiwanTime { get; set; } = string.Empty;
+    }
+
+    // 這是後台總覽用的設備摘要模型。
+    // 目的不是取代完整清單，而是讓管理者先看到每台設備的壓力概況，再決定要不要點進設備鏈。
+    public class EquipmentDashboardSummaryItem
+    {
+        public byte EquipmentId { get; set; }
+        public string EquipmentName { get; set; } = string.Empty;
+        public int ScheduledCount { get; set; }
+        public int ActiveCount { get; set; }
+        public int WaitingCount { get; set; }
+        public int QueueExpectedCount { get; set; }
+        public int RiskyScheduledCount { get; set; }
     }
 
     // 這是後台總覽頁的篩選條件。

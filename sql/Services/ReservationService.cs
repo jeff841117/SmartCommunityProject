@@ -276,11 +276,17 @@ namespace sql.Services
                     .ToList();
             }
 
+            var equipmentSummaries = BuildEquipmentDashboardSummaries(
+                scheduledReservations,
+                activeReservations,
+                waitingReservations);
+
             return new ReservationDashboardResponse
             {
                 ScheduledReservations = scheduledReservations,
                 ActiveReservations = activeReservations,
                 WaitingReservations = waitingReservations,
+                EquipmentSummaries = equipmentSummaries,
                 ServerTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
             };
         }
@@ -520,6 +526,69 @@ namespace sql.Services
         {
             var normalized = value.Replace("\"", "\"\"");
             return $"\"{normalized}\"";
+        }
+
+        // 這裡先把三種清單整理成「每台設備一筆」的摘要，
+        // 讓後台驗收時不用先翻完整表格，就能知道哪台設備目前壓力最大。
+        private static List<EquipmentDashboardSummaryItem> BuildEquipmentDashboardSummaries(
+            List<ScheduledReservationItem> scheduledReservations,
+            List<ActiveReservationItem> activeReservations,
+            List<WaitingReservationItem> waitingReservations)
+        {
+            var summaryMap = new Dictionary<byte, EquipmentDashboardSummaryItem>();
+
+            foreach (var reservation in scheduledReservations)
+            {
+                var summary = GetOrCreateSummary(summaryMap, reservation.EquipmentId, reservation.EquipmentName);
+                summary.ScheduledCount++;
+
+                if (reservation.QueueExpected)
+                {
+                    summary.QueueExpectedCount++;
+                }
+
+                if (!string.IsNullOrWhiteSpace(reservation.RiskSummary))
+                {
+                    summary.RiskyScheduledCount++;
+                }
+            }
+
+            foreach (var reservation in activeReservations)
+            {
+                var summary = GetOrCreateSummary(summaryMap, reservation.EquipmentId, reservation.EquipmentName);
+                summary.ActiveCount++;
+            }
+
+            foreach (var queue in waitingReservations)
+            {
+                var summary = GetOrCreateSummary(summaryMap, queue.EquipmentId, queue.EquipmentName);
+                summary.WaitingCount++;
+            }
+
+            return summaryMap.Values
+                .OrderByDescending(x => x.WaitingCount)
+                .ThenByDescending(x => x.QueueExpectedCount)
+                .ThenBy(x => x.EquipmentName)
+                .ToList();
+        }
+
+        private static EquipmentDashboardSummaryItem GetOrCreateSummary(
+            Dictionary<byte, EquipmentDashboardSummaryItem> summaryMap,
+            byte equipmentId,
+            string equipmentName)
+        {
+            if (summaryMap.TryGetValue(equipmentId, out var existing))
+            {
+                return existing;
+            }
+
+            var created = new EquipmentDashboardSummaryItem
+            {
+                EquipmentId = equipmentId,
+                EquipmentName = equipmentName
+            };
+            summaryMap[equipmentId] = created;
+            return created;
         }
     }
 

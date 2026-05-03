@@ -102,6 +102,56 @@
         </div>
 
         <div class="card mb-4">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">設備摘要</h5>
+            </div>
+            <div class="card-body">
+                @if (Model.Dashboard.EquipmentSummaries.Any())
+                {
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>設備</th>
+                                    <th>未來預約</th>
+                                    <th>使用中</th>
+                                    <th>排隊中</th>
+                                    <th>預約排隊風險</th>
+                                    <th>高風險預約數</th>
+                                    <th>設備鏈</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var summary in Model.Dashboard.EquipmentSummaries)
+                                {
+                                    <tr>
+                                        <td>@summary.EquipmentName</td>
+                                        <td>@summary.ScheduledCount</td>
+                                        <td>@summary.ActiveCount</td>
+                                        <td>@summary.WaitingCount</td>
+                                        <td>@summary.QueueExpectedCount</td>
+                                        <td>@summary.RiskyScheduledCount</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    type="button"
+                                                    onclick="loadEquipmentChain(@summary.EquipmentId)">
+                                                查看設備鏈
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <div class="text-muted">目前沒有符合條件的設備摘要資料。</div>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
             <div class="card-header bg-info text-white">
                 <h5 class="mb-0">未來預約</h5>
             </div>
