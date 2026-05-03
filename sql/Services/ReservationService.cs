@@ -281,6 +281,27 @@ namespace sql.Services
                 activeReservations,
                 waitingReservations);
 
+            if (normalizedFilter.RiskOnly)
+            {
+                equipmentSummaries = equipmentSummaries
+                    .Where(x => x.WaitingCount > 0 || x.QueueExpectedCount > 0 || x.RiskyScheduledCount > 0)
+                    .ToList();
+
+                var riskyEquipmentIds = equipmentSummaries
+                    .Select(x => x.EquipmentId)
+                    .ToHashSet();
+
+                scheduledReservations = scheduledReservations
+                    .Where(x => riskyEquipmentIds.Contains(x.EquipmentId))
+                    .ToList();
+                activeReservations = activeReservations
+                    .Where(x => riskyEquipmentIds.Contains(x.EquipmentId))
+                    .ToList();
+                waitingReservations = waitingReservations
+                    .Where(x => riskyEquipmentIds.Contains(x.EquipmentId))
+                    .ToList();
+            }
+
             return new ReservationDashboardResponse
             {
                 ScheduledReservations = scheduledReservations,
@@ -518,7 +539,8 @@ namespace sql.Services
                 EquipmentKeyword = filter?.EquipmentKeyword?.Trim(),
                 UserKeyword = filter?.UserKeyword?.Trim(),
                 ScheduledStatus = filter?.ScheduledStatus > 0 ? filter?.ScheduledStatus : null,
-                WaitingQueueType = filter?.WaitingQueueType > 0 ? filter?.WaitingQueueType : null
+                WaitingQueueType = filter?.WaitingQueueType > 0 ? filter?.WaitingQueueType : null,
+                RiskOnly = filter?.RiskOnly == true
             };
         }
 

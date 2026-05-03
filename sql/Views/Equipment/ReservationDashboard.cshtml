@@ -60,6 +60,12 @@
                             }
                         </select>
                     </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <div class="form-check mb-2">
+                            <input asp-for="Filter.RiskOnly" class="form-check-input" />
+                            <label asp-for="Filter.RiskOnly" class="form-check-label">只看高風險設備</label>
+                        </div>
+                    </div>
                     <div class="col-12 d-flex gap-2">
                         <button type="submit" class="btn btn-primary">套用篩選</button>
                         <a href="/Equipment/ReservationDashboard" class="btn btn-outline-secondary">清除條件</a>
@@ -68,6 +74,7 @@
                            asp-route-UserKeyword="@Model.Filter.UserKeyword"
                            asp-route-ScheduledStatus="@Model.Filter.ScheduledStatus"
                            asp-route-WaitingQueueType="@Model.Filter.WaitingQueueType"
+                           asp-route-RiskOnly="@Model.Filter.RiskOnly"
                            class="btn btn-success">匯出 CSV</a>
                     </div>
                 </form>

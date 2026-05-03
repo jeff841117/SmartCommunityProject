@@ -112,6 +112,7 @@ namespace sql.Models
         public string? UserKeyword { get; set; }
         public int? ScheduledStatus { get; set; }
         public int? WaitingQueueType { get; set; }
+        public bool RiskOnly { get; set; }
     }
 
     public class ReservationDashboardFilterOption
