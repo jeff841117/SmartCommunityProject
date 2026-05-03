@@ -103,6 +103,19 @@ namespace sql.Controllers
             }
         }
 
+        public IActionResult ExportEquipmentReservationChain(byte equipmentId)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _reservationService.ExportEquipmentReservationChainAsCsv(equipmentId);
+            var fileName = $"equipment-chain-{equipmentId}-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
+        }
+
         public IActionResult addEquipment()
         {
             var accessRedirect = EnsureManagerRedirect();

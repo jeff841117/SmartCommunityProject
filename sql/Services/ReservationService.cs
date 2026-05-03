@@ -306,6 +306,56 @@ namespace sql.Services
             return chain;
         }
 
+        // 單設備匯出沿用和設備鏈相同的整理結果，
+        // 這樣管理者看到的內容與匯出的內容就不會出現差異。
+        public byte[] ExportEquipmentReservationChainAsCsv(byte equipmentId)
+        {
+            var chain = GetEquipmentReservationChain(equipmentId);
+            var csv = new StringBuilder();
+
+            csv.AppendLine("設備,區塊,會員,狀態或類型,時間一,時間二,附加資訊");
+
+            foreach (var reservation in chain.ScheduledReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv(chain.EquipmentName),
+                    EscapeCsv("未來預約"),
+                    EscapeCsv(reservation.UserId),
+                    EscapeCsv(reservation.StatusText),
+                    EscapeCsv(reservation.ReservedStartTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv(reservation.ReservedEndTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv(reservation.RiskSummary)));
+            }
+
+            foreach (var reservation in chain.ActiveReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv(chain.EquipmentName),
+                    EscapeCsv("使用中"),
+                    EscapeCsv(reservation.UserId),
+                    EscapeCsv(reservation.StatusText),
+                    EscapeCsv(reservation.StartTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv($"{reservation.RemainingTime} 分鐘"),
+                    EscapeCsv(string.Empty)));
+            }
+
+            foreach (var queue in chain.WaitingReservations)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv(chain.EquipmentName),
+                    EscapeCsv("排隊中"),
+                    EscapeCsv(queue.UserId),
+                    EscapeCsv(queue.QueueTypeText),
+                    EscapeCsv(queue.QueueTime.ToString("yyyy-MM-dd HH:mm")),
+                    EscapeCsv($"第 {queue.Position} 位"),
+                    EscapeCsv(string.Empty)));
+            }
+
+            var bom = Encoding.UTF8.GetPreamble();
+            var content = Encoding.UTF8.GetBytes(csv.ToString());
+            return [.. bom, .. content];
+        }
+
         // 預約前的快速檢查：這裡不會真的建立預約，
         // 只是告訴前端目前是否可預約、設備是否已滿、是否在開放時間。
         public EquipmentAvailabilityResponse CheckEquipmentAvailability(byte equipmentId)
