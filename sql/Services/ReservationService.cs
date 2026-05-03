@@ -340,6 +340,15 @@ namespace sql.Services
             var chain = GetEquipmentReservationChain(equipmentId);
             var csv = new StringBuilder();
 
+            csv.AppendLine("設備鏈摘要");
+            csv.AppendLine("設備,未來預約,使用中,排隊中");
+            csv.AppendLine(string.Join(",",
+                EscapeCsv(chain.EquipmentName),
+                EscapeCsv(chain.ScheduledReservations.Count.ToString()),
+                EscapeCsv(chain.ActiveReservations.Count.ToString()),
+                EscapeCsv(chain.WaitingReservations.Count.ToString())));
+            csv.AppendLine();
+
             csv.AppendLine("設備,區塊,會員,狀態或類型,時間一,時間二,附加資訊");
 
             foreach (var reservation in chain.ScheduledReservations)
@@ -488,6 +497,32 @@ namespace sql.Services
             var dashboard = GetReservationDashboard(filter);
             var csv = new StringBuilder();
 
+            csv.AppendLine("總覽摘要");
+            csv.AppendLine("匯出時間,未來預約總數,使用中總數,排隊中總數,設備摘要筆數");
+            csv.AppendLine(string.Join(",",
+                EscapeCsv(dashboard.ServerTaiwanTime),
+                EscapeCsv(dashboard.ScheduledReservations.Count.ToString()),
+                EscapeCsv(dashboard.ActiveReservations.Count.ToString()),
+                EscapeCsv(dashboard.WaitingReservations.Count.ToString()),
+                EscapeCsv(dashboard.EquipmentSummaries.Count.ToString())));
+            csv.AppendLine();
+
+            csv.AppendLine("設備摘要");
+            csv.AppendLine("設備,未來預約,使用中,排隊中,預約排隊風險,高風險預約,壓力等級,摘要說明");
+            foreach (var summary in dashboard.EquipmentSummaries)
+            {
+                csv.AppendLine(string.Join(",",
+                    EscapeCsv(summary.EquipmentName),
+                    EscapeCsv(summary.ScheduledCount.ToString()),
+                    EscapeCsv(summary.ActiveCount.ToString()),
+                    EscapeCsv(summary.WaitingCount.ToString()),
+                    EscapeCsv(summary.QueueExpectedCount.ToString()),
+                    EscapeCsv(summary.RiskyScheduledCount.ToString()),
+                    EscapeCsv(summary.PressureLevel),
+                    EscapeCsv(summary.PressureSummary)));
+            }
+
+            csv.AppendLine();
             csv.AppendLine("區塊,設備,會員,狀態或類型,時間一,時間二,附加資訊");
 
             foreach (var reservation in dashboard.ScheduledReservations)
