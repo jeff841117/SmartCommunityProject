@@ -588,8 +588,10 @@ namespace sql.Services
             }
 
             return summaryMap.Values
+                .Select(ApplyPressureSummary)
                 .OrderByDescending(x => x.WaitingCount)
                 .ThenByDescending(x => x.QueueExpectedCount)
+                .ThenByDescending(x => x.RiskyScheduledCount)
                 .ThenBy(x => x.EquipmentName)
                 .ToList();
         }
@@ -611,6 +613,60 @@ namespace sql.Services
             };
             summaryMap[equipmentId] = created;
             return created;
+        }
+
+        // 壓力等級不是精密排程演算法，而是給管理者快速掃描用的風險摘要。
+        // 目標是讓驗收時先看到「哪台設備最需要關注」，再決定是否展開明細。
+        private static EquipmentDashboardSummaryItem ApplyPressureSummary(EquipmentDashboardSummaryItem summary)
+        {
+            if (summary.WaitingCount >= 3 || summary.QueueExpectedCount >= 2 || summary.RiskyScheduledCount >= 3)
+            {
+                summary.PressureLevel = "高壓";
+                summary.PressureCssClass = "bg-danger";
+                summary.PressureSummary = BuildPressureSummary(summary, "目前排隊與預約衝突明顯，建議優先查看設備鏈。");
+                return summary;
+            }
+
+            if (summary.WaitingCount > 0 || summary.QueueExpectedCount > 0 || summary.RiskyScheduledCount > 0 || summary.ActiveCount >= 2)
+            {
+                summary.PressureLevel = "中壓";
+                summary.PressureCssClass = "bg-warning text-dark";
+                summary.PressureSummary = BuildPressureSummary(summary, "已有壅塞跡象，建議留意後續排隊與未來預約變化。");
+                return summary;
+            }
+
+            summary.PressureLevel = "低壓";
+            summary.PressureCssClass = "bg-success";
+            summary.PressureSummary = "目前設備負載穩定，尚未出現明顯排隊或預約衝突。";
+            return summary;
+        }
+
+        // 把數字翻成一句容易讀的摘要，讓管理者不用先心算就能理解壓力來源。
+        private static string BuildPressureSummary(EquipmentDashboardSummaryItem summary, string defaultSummary)
+        {
+            var reasons = new List<string>();
+
+            if (summary.WaitingCount > 0)
+            {
+                reasons.Add($"目前有 {summary.WaitingCount} 筆排隊");
+            }
+
+            if (summary.QueueExpectedCount > 0)
+            {
+                reasons.Add($"有 {summary.QueueExpectedCount} 筆預約預計轉排隊");
+            }
+
+            if (summary.RiskyScheduledCount > 0)
+            {
+                reasons.Add($"有 {summary.RiskyScheduledCount} 筆未來預約帶風險");
+            }
+
+            if (reasons.Count == 0)
+            {
+                return defaultSummary;
+            }
+
+            return $"{string.Join("，", reasons)}。{defaultSummary}";
         }
     }
 

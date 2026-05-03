@@ -7,22 +7,23 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
     <input type="hidden" id="currentChainEquipmentId" value="" />
+
     <div class="container py-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
             <div>
                 <h1 class="fw-bold mb-1">預約與排隊總覽</h1>
-                <p class="text-muted mb-0">讓管理者快速查看未來預約、使用中與排隊中狀況，並直接執行人工干預。</p>
+                <p class="text-muted mb-0">這裡集中查看未來預約、使用中、排隊中與設備壓力摘要，方便管理者快速判斷要先處理哪一台設備。</p>
             </div>
-            <div class="text-end">
-                <a href="/Equipment/Index" class="btn btn-outline-secondary">返回設備管理</a>
-                <div class="small text-muted mt-2">伺服器時間：@Model.Dashboard.ServerTaiwanTime</div>
+            <div class="text-lg-end">
+                <a href="/Equipment/Index" class="btn btn-outline-secondary">回設備管理</a>
+                <div class="small text-muted mt-2">目前台灣時間：@Model.Dashboard.ServerTaiwanTime</div>
             </div>
         </div>
 
@@ -33,15 +34,15 @@
             <div class="card-body">
                 <form method="get" class="row g-3">
                     <div class="col-md-3">
-                        <label class="form-label">設備關鍵字</label>
-                        <input asp-for="Filter.EquipmentKeyword" class="form-control" placeholder="設備名稱">
+                        <label asp-for="Filter.EquipmentKeyword" class="form-label">設備關鍵字</label>
+                        <input asp-for="Filter.EquipmentKeyword" class="form-control" placeholder="例如：健身房" />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">會員關鍵字</label>
-                        <input asp-for="Filter.UserKeyword" class="form-control" placeholder="帳號或會員識別">
+                        <label asp-for="Filter.UserKeyword" class="form-label">會員關鍵字</label>
+                        <input asp-for="Filter.UserKeyword" class="form-control" placeholder="例如：jeff" />
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">未來預約狀態</label>
+                        <label asp-for="Filter.ScheduledStatus" class="form-label">未來預約狀態</label>
                         <select asp-for="Filter.ScheduledStatus" class="form-select">
                             <option value="">全部</option>
                             @foreach (var option in Model.ScheduledStatusOptions)
@@ -51,7 +52,7 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <label class="form-label">排隊類型</label>
+                        <label asp-for="Filter.WaitingQueueType" class="form-label">排隊類型</label>
                         <select asp-for="Filter.WaitingQueueType" class="form-select">
                             <option value="">全部</option>
                             @foreach (var option in Model.WaitingQueueTypeOptions)
@@ -66,7 +67,7 @@
                             <label asp-for="Filter.RiskOnly" class="form-check-label">只看高風險設備</label>
                         </div>
                     </div>
-                    <div class="col-12 d-flex gap-2">
+                    <div class="col-12 d-flex flex-wrap gap-2">
                         <button type="submit" class="btn btn-primary">套用篩選</button>
                         <a href="/Equipment/ReservationDashboard" class="btn btn-outline-secondary">清除條件</a>
                         <a asp-action="ExportReservationDashboard"
@@ -75,7 +76,7 @@
                            asp-route-ScheduledStatus="@Model.Filter.ScheduledStatus"
                            asp-route-WaitingQueueType="@Model.Filter.WaitingQueueType"
                            asp-route-RiskOnly="@Model.Filter.RiskOnly"
-                           class="btn btn-success">匯出 CSV</a>
+                           class="btn btn-success">匯出目前總覽 CSV</a>
                     </div>
                 </form>
             </div>
@@ -83,7 +84,7 @@
 
         <div class="row g-3 mb-4">
             <div class="col-md-4">
-                <div class="card border-info">
+                <div class="card border-info h-100">
                     <div class="card-body">
                         <div class="text-muted small">未來預約</div>
                         <div class="fs-3 fw-bold">@Model.Dashboard.ScheduledReservations.Count</div>
@@ -91,7 +92,7 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card border-primary">
+                <div class="card border-primary h-100">
                     <div class="card-body">
                         <div class="text-muted small">使用中</div>
                         <div class="fs-3 fw-bold">@Model.Dashboard.ActiveReservations.Count</div>
@@ -99,7 +100,7 @@
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card border-warning">
+                <div class="card border-warning h-100">
                     <div class="card-body">
                         <div class="text-muted small">排隊中</div>
                         <div class="fs-3 fw-bold">@Model.Dashboard.WaitingReservations.Count</div>
@@ -124,7 +125,9 @@
                                     <th>使用中</th>
                                     <th>排隊中</th>
                                     <th>預約排隊風險</th>
-                                    <th>高風險預約數</th>
+                                    <th>高風險預約</th>
+                                    <th>壓力等級</th>
+                                    <th>摘要說明</th>
                                     <th>設備鏈</th>
                                 </tr>
                             </thead>
@@ -138,6 +141,10 @@
                                         <td>@summary.WaitingCount</td>
                                         <td>@summary.QueueExpectedCount</td>
                                         <td>@summary.RiskyScheduledCount</td>
+                                        <td>
+                                            <span class="badge @summary.PressureCssClass">@summary.PressureLevel</span>
+                                        </td>
+                                        <td class="small text-muted">@summary.PressureSummary</td>
                                         <td>
                                             <button class="btn btn-sm btn-outline-primary"
                                                     type="button"
@@ -153,7 +160,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有符合條件的設備摘要資料。</div>
+                    <div class="text-muted">目前沒有符合篩選條件的設備摘要資料。</div>
                 }
             </div>
         </div>
@@ -220,7 +227,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有符合條件的未來預約。</div>
+                    <div class="text-muted">目前沒有符合篩選條件的未來預約資料。</div>
                 }
             </div>
         </div>
@@ -268,7 +275,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有符合條件的使用中預約。</div>
+                    <div class="text-muted">目前沒有符合篩選條件的使用中資料。</div>
                 }
             </div>
         </div>
@@ -324,7 +331,7 @@
                 }
                 else
                 {
-                    <div class="text-muted">目前沒有符合條件的排隊紀錄。</div>
+                    <div class="text-muted">目前沒有符合篩選條件的排隊資料。</div>
                 }
             </div>
         </div>
@@ -336,16 +343,14 @@
                 <div class="modal-header">
                     <h5 class="modal-title" id="equipmentChainTitle">設備預約／排隊鏈</h5>
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button"
-                                class="btn btn-sm btn-success"
-                                onclick="exportCurrentEquipmentChain()">
+                        <button type="button" class="btn btn-sm btn-success" onclick="exportCurrentEquipmentChain()">
                             匯出設備鏈 CSV
                         </button>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                 </div>
                 <div class="modal-body" id="equipmentChainBody">
-                    <div class="text-muted">讀取中...</div>
+                    <div class="text-muted">載入中...</div>
                 </div>
             </div>
         </div>
@@ -365,21 +370,21 @@
                         <input type="date" class="form-control" id="rescheduleReservationDate" />
                     </div>
                     <div class="mb-3">
-                        <label for="rescheduleReservationTime" class="form-label">新的開始時間</label>
+                        <label for="rescheduleReservationTime" class="form-label">新的開始時段</label>
                         <input type="time" class="form-control" id="rescheduleReservationTime" step="900" />
-                        <div class="form-text">以 15 分鐘為一個切片，例如 09:00、09:15、09:30。</div>
+                        <div class="form-text">每 15 分鐘為一個時段，例如 09:00、09:15、09:30。</div>
                     </div>
                     <div id="reschedulePreviewBox" class="alert alert-secondary small mb-3">
-                        請先輸入新的日期與時間，然後點選「預覽影響」查看調整後會變成正常預約，還是可能需要排隊。
+                        先按「預覽影響」查看調整後的狀態、保留名額與可能排隊情況，再決定是否送出。
                     </div>
                     <div class="small text-muted">
-                        管理者調整時段時，仍會沿用和一般未來預約相同的容量與排隊推算規則。
+                        如果新時段依目前推算仍可能排隊，系統會先提醒管理者，再決定是否強制套用。
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-outline-primary" onclick="previewRescheduleImpact()">預覽影響</button>
-                    <button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">儲存調整</button>
+                    <button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">送出調整</button>
                 </div>
             </div>
         </div>
@@ -388,11 +393,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        const rescheduleModalElement = document.getElementById('rescheduleModal');
-        const rescheduleModal = new bootstrap.Modal(rescheduleModalElement);
+        const rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
 
         function forceEndUsage(reservationId) {
-            if (!confirm('確定要由管理者強制結束這筆使用中的預約嗎？')) {
+            if (!confirm('確定要強制結束這筆使用中的預約嗎？')) {
                 return;
             }
 
@@ -404,15 +408,15 @@
                         return;
                     }
 
-                    alert(response.message || '強制結束失敗');
+                    alert(response.message || '強制結束使用失敗。');
                 })
                 .fail(function () {
-                    alert('強制結束失敗，請稍後再試');
+                    alert('強制結束使用失敗，請稍後再試。');
                 });
         }
 
         function forceCancelScheduledReservation(reservationId) {
-            if (!confirm('確定要由管理者取消這筆未來預約嗎？')) {
+            if (!confirm('確定要取消這筆未來預約嗎？')) {
                 return;
             }
 
@@ -424,15 +428,15 @@
                         return;
                     }
 
-                    alert(response.message || '取消未來預約失敗');
+                    alert(response.message || '取消未來預約失敗。');
                 })
                 .fail(function () {
-                    alert('取消未來預約失敗，請稍後再試');
+                    alert('取消未來預約失敗，請稍後再試。');
                 });
         }
 
         function forceCancelQueue(queueId) {
-            if (!confirm('確定要由管理者移除這筆排隊紀錄嗎？')) {
+            if (!confirm('確定要移除這筆排隊紀錄嗎？')) {
                 return;
             }
 
@@ -444,10 +448,10 @@
                         return;
                     }
 
-                    alert(response.message || '移除排隊失敗');
+                    alert(response.message || '移除排隊失敗。');
                 })
                 .fail(function () {
-                    alert('移除排隊失敗，請稍後再試');
+                    alert('移除排隊失敗，請稍後再試。');
                 });
         }
 
@@ -462,7 +466,7 @@
         function resetReschedulePreview() {
             const box = document.getElementById('reschedulePreviewBox');
             box.className = 'alert alert-secondary small mb-3';
-            box.innerHTML = '請先輸入新的日期與時間，然後點選「預覽影響」查看調整後會變成正常預約，還是可能需要排隊。';
+            box.innerHTML = '先按「預覽影響」查看調整後的狀態、保留名額與可能排隊情況，再決定是否送出。';
         }
 
         function previewRescheduleImpact() {
@@ -473,7 +477,7 @@
 
             if (!reservationDate || !selectedSlotStartTime) {
                 box.className = 'alert alert-warning small mb-3';
-                box.innerHTML = '請先輸入新的日期與時間。';
+                box.innerHTML = '請先填寫新的日期與時段。';
                 return;
             }
 
@@ -488,21 +492,21 @@
                 .done(function (response) {
                     if (!response.success || !response.data) {
                         box.className = 'alert alert-danger small mb-3';
-                        box.innerHTML = response.message || '目前無法預覽調整影響。';
+                        box.innerHTML = response.message || '預覽調整影響失敗。';
                         return;
                     }
 
                     const preview = response.data;
                     if (!preview.canReschedule) {
                         box.className = 'alert alert-danger small mb-3';
-                        box.innerHTML = preview.message || '這筆預約目前不可調整。';
+                        box.innerHTML = preview.message || '這筆預約目前無法調整。';
                         return;
                     }
 
                     const details = [
-                        `預計狀態：${preview.targetStatusText}`,
-                        `保留名額：${preview.reservedCapacityCount}`,
-                        `前方等待人數：${preview.forecastWaitingCount}`,
+                        `調整後狀態：${preview.targetStatusText}`,
+                        `已保留名額：${preview.reservedCapacityCount}`,
+                        `推算前方等待人數：${preview.forecastWaitingCount}`,
                         `新時段：${preview.scheduledStartTimeText} - ${preview.scheduledEndTimeText}`
                     ];
 
@@ -511,7 +515,7 @@
                         : 'alert alert-success small mb-3';
                     box.innerHTML = `
                         <div class="fw-semibold mb-1">${preview.message}</div>
-                        <div>${details.join('；')}</div>
+                        <div>${details.join('，')}</div>
                     `;
                 })
                 .fail(function () {
@@ -526,7 +530,7 @@
             const selectedSlotStartTime = document.getElementById('rescheduleReservationTime').value;
 
             if (!reservationDate || !selectedSlotStartTime) {
-                alert('請先輸入新的日期與時間。');
+                alert('請先填寫新的日期與時段。');
                 return;
             }
 
@@ -545,26 +549,27 @@
                     }
 
                     if (response.requiresConfirmation && response.queueExpected) {
-                        const message = response.message || '依目前推算，新的時段到點後仍可能需要排隊。是否仍要調整？';
+                        const message = response.message || '依目前推算，調整後仍可能需要排隊。是否仍要套用？';
                         if (confirm(message)) {
                             submitRescheduleReservation(true);
                         }
                         return;
                     }
 
-                    alert(response.message || '調整時段失敗');
+                    alert(response.message || '調整預約時段失敗。');
                 })
                 .fail(function () {
-                    alert('調整時段失敗，請稍後再試');
+                    alert('調整預約時段失敗，請稍後再試。');
                 });
         }
 
         function loadEquipmentChain(equipmentId) {
             document.getElementById('currentChainEquipmentId').value = equipmentId;
+
             $.get('/Equipment/GetEquipmentReservationChain', { equipmentId: equipmentId })
                 .done(function (response) {
                     if (!response.success || !response.data) {
-                        alert(response.message || '無法取得設備預約鏈資料');
+                        alert(response.message || '取得設備鏈資料失敗。');
                         return;
                     }
 
@@ -573,14 +578,14 @@
                     modal.show();
                 })
                 .fail(function () {
-                    alert('無法取得設備預約鏈資料');
+                    alert('取得設備鏈資料失敗。');
                 });
         }
 
         function exportCurrentEquipmentChain() {
             const equipmentId = document.getElementById('currentChainEquipmentId').value;
             if (!equipmentId) {
-                alert('目前沒有可匯出的設備鏈資料。');
+                alert('請先選擇要查看的設備。');
                 return;
             }
 
@@ -622,20 +627,20 @@
                 <div class="mb-4">
                     <h6>未來預約</h6>
                     ${scheduledRows
-                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>結束時間</th><th>狀態</th><th>風險摘要</th></tr></thead><tbody>${scheduledRows}</tbody></table>`
+                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>結束</th><th>狀態</th><th>風險摘要</th></tr></thead><tbody>${scheduledRows}</tbody></table>`
                         : '<div class="text-muted">目前沒有未來預約。</div>'}
                 </div>
                 <div class="mb-4">
                     <h6>使用中</h6>
                     ${activeRows
                         ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>`
-                        : '<div class="text-muted">目前沒有使用中預約。</div>'}
+                        : '<div class="text-muted">目前沒有使用中資料。</div>'}
                 </div>
                 <div>
                     <h6>排隊中</h6>
                     ${waitingRows
-                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>類型</th><th>排隊時間</th></tr></thead><tbody>${waitingRows}</tbody></table>`
-                        : '<div class="text-muted">目前沒有排隊紀錄。</div>'}
+                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>排隊類型</th><th>排隊時間</th></tr></thead><tbody>${waitingRows}</tbody></table>`
+                        : '<div class="text-muted">目前沒有排隊資料。</div>'}
                 </div>
             `);
         }

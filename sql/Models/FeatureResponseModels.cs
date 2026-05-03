@@ -102,6 +102,9 @@ namespace sql.Models
         public int WaitingCount { get; set; }
         public int QueueExpectedCount { get; set; }
         public int RiskyScheduledCount { get; set; }
+        public string PressureLevel { get; set; } = string.Empty;
+        public string PressureCssClass { get; set; } = string.Empty;
+        public string PressureSummary { get; set; } = string.Empty;
     }
 
     // 這是後台總覽頁的篩選條件。
