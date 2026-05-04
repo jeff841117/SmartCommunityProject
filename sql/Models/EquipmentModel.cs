@@ -15,6 +15,7 @@ namespace sql.Models
         public short  AvailableTime { get; set; } // 可使用時間
         public TimeSpan OpenTime { get; set; } // 開放時間
         public TimeSpan CloseTime { get; set; } // 關閉時間
+        public string EquipmentCategory { get; set; } = "場館"; // 設備種類
     }
 
 }

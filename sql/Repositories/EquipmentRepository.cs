@@ -19,9 +19,13 @@ namespace sql.Repositories
             var equipments = new List<Equipment>();
 
             using var connection = _dbManager.CreateConnection();
+            EnsureEquipmentCategoryColumn(connection);
             using var cmd = new SqlCommand("SELECT * FROM Equipment", connection);
 
-            connection.Open();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var reader = cmd.ExecuteReader();
             while (reader.Read())
             {
@@ -34,10 +38,14 @@ namespace sql.Repositories
         public Equipment? GetById(byte equipmentId)
         {
             using var connection = _dbManager.CreateConnection();
+            EnsureEquipmentCategoryColumn(connection);
             using var cmd = new SqlCommand("SELECT * FROM Equipment WHERE Id = @Id", connection);
             cmd.Parameters.AddWithValue("@Id", equipmentId);
 
-            connection.Open();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
             {
@@ -50,21 +58,27 @@ namespace sql.Repositories
         public void Create(Equipment equipment)
         {
             using var connection = _dbManager.CreateConnection();
+            EnsureEquipmentCategoryColumn(connection);
             using var cmd = new SqlCommand(@"
-                INSERT INTO Equipment (equipmentName, MaxUsers, AvailableTime, OpenTime, CloseTime)
-                VALUES (@equipmentName, @MaxUsers, @AvailableTime, @OpenTime, @CloseTime)", connection);
+                INSERT INTO Equipment (equipmentName, EquipmentCategory, MaxUsers, AvailableTime, OpenTime, CloseTime)
+                VALUES (@equipmentName, @EquipmentCategory, @MaxUsers, @AvailableTime, @OpenTime, @CloseTime)", connection);
 
             FillEquipmentParameters(cmd, equipment, includeId: false);
-            connection.Open();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             cmd.ExecuteNonQuery();
         }
 
         public void Update(Equipment equipment)
         {
             using var connection = _dbManager.CreateConnection();
+            EnsureEquipmentCategoryColumn(connection);
             using var cmd = new SqlCommand(@"
                 UPDATE Equipment
                 SET equipmentName = @equipmentName,
+                    EquipmentCategory = @EquipmentCategory,
                     MaxUsers = @MaxUsers,
                     AvailableTime = @AvailableTime,
                     OpenTime = @OpenTime,
@@ -72,7 +86,10 @@ namespace sql.Repositories
                 WHERE Id = @Id", connection);
 
             FillEquipmentParameters(cmd, equipment, includeId: true);
-            connection.Open();
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                connection.Open();
+            }
             cmd.ExecuteNonQuery();
         }
 
@@ -97,6 +114,7 @@ namespace sql.Repositories
         private static void FillEquipmentParameters(SqlCommand cmd, Equipment equipment, bool includeId)
         {
             cmd.Parameters.AddWithValue("@equipmentName", equipment.equipmentName);
+            cmd.Parameters.AddWithValue("@EquipmentCategory", equipment.EquipmentCategory);
             cmd.Parameters.AddWithValue("@MaxUsers", equipment.MaxUsers);
             cmd.Parameters.AddWithValue("@AvailableTime", equipment.AvailableTime);
             cmd.Parameters.AddWithValue("@OpenTime", equipment.OpenTime);
@@ -106,6 +124,31 @@ namespace sql.Repositories
             {
                 cmd.Parameters.AddWithValue("@Id", equipment.Id);
             }
+        }
+
+        // 這裡用最小成本補資料表欄位，避免測試環境或舊資料庫還沒跑 migration 時，
+        // 前台設備種類篩選一打開就直接因為缺欄位失敗。
+        private static void EnsureEquipmentCategoryColumn(SqlConnection connection)
+        {
+            var wasClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasClosed)
+            {
+                connection.Open();
+            }
+
+            using var cmd = new SqlCommand(@"
+                IF COL_LENGTH('Equipment', 'EquipmentCategory') IS NULL
+                BEGIN
+                    ALTER TABLE Equipment
+                    ADD EquipmentCategory NVARCHAR(20) NOT NULL
+                        CONSTRAINT DF_Equipment_EquipmentCategory DEFAULT N'場館';
+
+                    UPDATE Equipment
+                    SET EquipmentCategory = N'場館'
+                    WHERE EquipmentCategory IS NULL;
+                END", connection);
+
+            cmd.ExecuteNonQuery();
         }
     }
 }

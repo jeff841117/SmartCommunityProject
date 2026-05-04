@@ -1,94 +1,98 @@
-﻿@model sql.Models.EquipmentReservationPageViewModel
+@model sql.Models.EquipmentReservationPageViewModel
 @{
-    ViewData["Title"] = "設備預約";
+    ViewData["Title"] = "設備使用";
     Layout = "";
+    var categoryOptions = Model.Equipments
+        .Select(x => string.IsNullOrWhiteSpace(x.EquipmentCategory) ? "場館" : x.EquipmentCategory)
+        .Distinct()
+        .OrderBy(x => x)
+        .ToList();
 }
 
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="~/css/Reservation.css" rel="stylesheet" asp-append-version="true">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/Reservation.css" rel="stylesheet" asp-append-version="true" />
 </head>
-<!-- 成功訊息 Modal -->
-<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">✓ 操作成功</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="successMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 錯誤訊息 Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">✗ 操作失敗</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="errorMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 確認 Modal -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">⚠️ 確認操作</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-warning" id="confirmAction">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
 <body>
+    <div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">操作成功</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="successMessage" class="mb-0"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">操作失敗</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="errorMessage" class="mb-0"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">確認操作</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmMessage" class="mb-0"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-warning" id="confirmAction">確定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="header-section">
         <div class="container">
-            <h1 class="display-4 fw-bold">設備預約系統</h1>
-            <p class="lead">預約使用設備，即時查看使用狀態和排隊情況</p>
+            <h1 class="display-5 fw-bold mb-2">設備使用系統</h1>
+            <p class="lead mb-0">立即使用設備，或預約未來時間點並查看排隊風險。</p>
         </div>
     </div>
 
     <div class="container"
          id="reservationPageConfig"
          data-slot-interval="@Model.SlotIntervalMinutes"
-         data-advance-days="@Model.AdvanceReservationDays">
+         data-advance-days="@Model.AdvanceReservationDays"
+         data-page-size="6">
         <div class="row mb-4">
             <div class="col-12">
                 <div class="user-info">
-                    <div class="row align-items-center">
-                        <div class="col-md-6">
-                            <h5 class="mb-1">歡迎使用設備預約系統</h5>
+                    <div class="row align-items-center g-3">
+                        <div class="col-lg-7">
+                            <h5 class="mb-1">歡迎使用設備系統</h5>
                             <p class="mb-0" id="userWelcome">載入使用者資訊...</p>
                         </div>
-                        <div class="col-md-6 text-end">
-                            <a href="/Equipment/MyReservations" class="btn btn-light me-2">我的預約</a>
+                        <div class="col-lg-5 text-lg-end user-action-group">
+                            <a href="/Equipment/MyReservations" class="btn btn-light me-lg-2">我的預約</a>
                             <a href="/Account/Logout" class="btn btn-outline-light">登出</a>
                         </div>
                     </div>
@@ -96,55 +100,86 @@
             </div>
         </div>
 
-        <div class="row mb-3">
-            <div class="col-12">
-                <button class="btn btn-outline-primary btn-refresh-all" onclick="refreshAllEquipmentStatus()">
-                    🔄 更新所有設備狀態
-                </button>
+        <div class="filter-panel mb-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4 col-lg-3">
+                    <label for="availabilityFilter" class="form-label">是否可立即使用</label>
+                    <select id="availabilityFilter" class="form-select">
+                        <option value="all">全部</option>
+                        <option value="immediate">可立即使用</option>
+                        <option value="not-immediate">目前不可立即使用</option>
+                    </select>
+                </div>
+                <div class="col-md-4 col-lg-3">
+                    <label for="categoryFilter" class="form-label">設備種類</label>
+                    <select id="categoryFilter" class="form-select">
+                        <option value="all">全部</option>
+                        @foreach (var category in categoryOptions)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 col-lg-6">
+                    <div class="filter-summary" id="equipmentCountLabel">載入設備資料中...</div>
+                </div>
             </div>
         </div>
 
-        <div class="row" id="equipmentList">
+        <div class="row g-4" id="equipmentList">
             @foreach (var equipment in Model.Equipments)
             {
-                <div class="col-md-6 col-lg-4 equipment-item" data-equipment-id="@equipment.Id">
+                <div class="col-12 col-md-6 col-xl-4 equipment-item"
+                     data-equipment-id="@equipment.Id"
+                     data-category="@(string.IsNullOrWhiteSpace(equipment.EquipmentCategory) ? "場館" : equipment.EquipmentCategory)"
+                     data-availability-state="unknown">
                     <div class="equipment-card">
                         <div class="equipment-header">
-                            <h5 class="mb-0">@equipment.equipmentName</h5>
+                            <div>
+                                <h5 class="mb-1">@equipment.equipmentName</h5>
+                                <span class="equipment-category-badge">@(string.IsNullOrWhiteSpace(equipment.EquipmentCategory) ? "場館" : equipment.EquipmentCategory)</span>
+                            </div>
                         </div>
+
                         <div class="equipment-body">
-                            <div class="equipment-info">
-                                <p class="mb-1"><strong>使用上限:</strong> @equipment.MaxUsers 人</p>
-                                <p class="mb-1"><strong>使用時間:</strong> @equipment.AvailableTime 分鐘</p>
-                                <p class="mb-1"><strong>開放時間:</strong> @equipment.OpenTime.ToString(@"hh\:mm") - @equipment.CloseTime.ToString(@"hh\:mm")</p>
+                            <div class="equipment-info-grid">
+                                <div>
+                                    <div class="info-label">使用上限</div>
+                                    <div class="info-value">@equipment.MaxUsers 人</div>
+                                </div>
+                                <div>
+                                    <div class="info-label">使用時間</div>
+                                    <div class="info-value">@equipment.AvailableTime 分鐘</div>
+                                </div>
+                                <div class="info-span-2">
+                                    <div class="info-label">開放時間</div>
+                                    <div class="info-value">@equipment.OpenTime.ToString(@"hh\:mm") - @equipment.CloseTime.ToString(@"hh\:mm")</div>
+                                </div>
                             </div>
 
                             <div class="real-time-status mt-3">
-                                <p class="mb-1">
-                                    <strong>當前狀態:</strong>
+                                <div class="status-row">
+                                    <span class="info-label">當前狀態</span>
                                     <span class="status-text" id="status-@equipment.Id">檢查中...</span>
-                                </p>
-                                <p class="mb-1">
-                                    <strong>使用人數:</strong>
-                                    <span class="current-users" id="users-@equipment.Id">-</span>/@equipment.MaxUsers
-                                </p>
-                                <p class="mb-1">
-                                    <strong>排隊人數:</strong>
-                                    <span class="queue-count" id="queue-@equipment.Id">-</span>人
-                                </p>
+                                </div>
+                                <div class="status-row">
+                                    <span class="info-label">使用人數</span>
+                                    <span><span class="current-users" id="users-@equipment.Id">-</span>/@equipment.MaxUsers</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="info-label">排隊人數</span>
+                                    <span><span class="queue-count" id="queue-@equipment.Id">-</span> 人</span>
+                                </div>
                             </div>
 
-                            <div class="queue-info" id="queue-info-@equipment.Id" style="display: none;">
-                                <div class="queue-details">
-                                    <p class="mb-1"><strong>當前排隊:</strong> <span class="queue-count" id="queue-@equipment.Id">-</span>人</p>
-                                    <p class="mb-1"><strong>預計等待:</strong> <span class="wait-time" id="wait-time-@equipment.Id">-</span>分鐘</p>
-                                    <p class="mb-1"><strong>最快可用:</strong> <span class="available-time" id="available-time-@equipment.Id">-</span></p>
-                                    <div class="queue-progress mt-2">
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-warning" id="queue-progress-@equipment.Id" style="width: 0%"></div>
-                                        </div>
-                                        <small class="text-muted" id="queue-position-@equipment.Id">排隊進度</small>
-                                    </div>
+                            <div class="queue-info mt-3" id="queue-info-@equipment.Id" style="display: none;">
+                                <div class="status-row">
+                                    <span class="info-label">預計等待</span>
+                                    <span><span class="wait-time" id="wait-time-@equipment.Id">-</span> 分鐘</span>
+                                </div>
+                                <div class="status-row">
+                                    <span class="info-label">最快可用</span>
+                                    <span class="available-time" id="available-time-@equipment.Id">-</span>
                                 </div>
                             </div>
 
@@ -153,45 +188,41 @@
                                         data-equipment-id="@equipment.Id"
                                         id="reserve-btn-@equipment.Id"
                                         onclick="makeReservation(@equipment.Id)">
-                                    立即預約
+                                    立即使用
                                 </button>
-                                <button class="btn btn-outline-secondary mt-2"
+                                <button class="btn btn-outline-secondary reservation-btn"
                                         type="button"
                                         onclick="toggleFuturePlanner(@equipment.Id)">
-                                    查看未來時段
+                                    查看預約時間
                                 </button>
                             </div>
 
                             <div class="future-planner mt-3" id="future-planner-@equipment.Id" style="display: none;">
-                                <div class="card border-0 bg-light">
-                                    <div class="card-body">
-                                        <h6 class="fw-bold mb-3">未來時段預約規劃</h6>
-                                        <p class="text-muted small mb-2">
-                                            系統會先保留未來預約的時段名額，並依目前使用中與排隊中的情況做推算。
-                                            若推算到該時段時仍可能需要排隊，會先提醒你再決定是否建立預約。
-                                        </p>
-                                        <div class="row g-2 align-items-end">
-                                            <div class="col-md-6">
-                                                <label class="form-label mb-1">預約日期</label>
-                                                <input type="date"
-                                                       class="form-control future-date-input"
-                                                       id="future-date-@equipment.Id" />
-                                            </div>
-                                            <div class="col-md-6">
-                                                <button type="button"
-                                                        class="btn btn-outline-primary w-100"
-                                                        onclick="loadFutureReservationPlanning(@equipment.Id)">
-                                                    載入可選時段
-                                                </button>
-                                            </div>
+                                <div class="future-planner-card">
+                                    <div class="planner-title">預約時間選擇</div>
+                                    <div class="row g-2">
+                                        <div class="col-12">
+                                            <label class="form-label mb-1" for="future-date-@equipment.Id">日期</label>
+                                            <input type="date"
+                                                   class="form-control future-date-input"
+                                                   id="future-date-@equipment.Id"
+                                                   onchange="loadFutureReservationPlanning(@equipment.Id)" />
                                         </div>
-                                        <div class="future-planning-note small text-muted mt-2"
-                                             id="future-note-@equipment.Id"></div>
-                                        <div class="future-slot-list mt-3"
-                                             id="future-slots-@equipment.Id">
-                                            <div class="text-muted small">請先選擇日期並載入時段</div>
+                                        <div class="col-12">
+                                            <label class="form-label mb-1" for="future-slot-select-@equipment.Id">預約時間</label>
+                                            <select class="form-select future-slot-select"
+                                                    id="future-slot-select-@equipment.Id"
+                                                    onchange="updateFutureSlotHint(@equipment.Id)">
+                                                <option value="">請先選擇日期</option>
+                                            </select>
                                         </div>
                                     </div>
+                                    <div class="future-slot-hint small text-muted mt-2" id="future-slot-hint-@equipment.Id"></div>
+                                    <button type="button"
+                                            class="btn btn-outline-primary w-100 mt-3"
+                                            onclick="createFutureReservation(@equipment.Id)">
+                                        建立預約
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -200,11 +231,17 @@
             }
         </div>
 
+        <div id="emptyEquipmentState" class="alert alert-warning text-center mt-4" style="display: none;">
+            沒有符合目前篩選條件的設備。
+        </div>
+
+        <div id="reservationPagination" class="pagination-wrapper mt-4"></div>
+
         @if (!Model.Equipments.Any())
         {
-            <div class="alert alert-warning text-center" role="alert">
+            <div class="alert alert-warning text-center mt-4" role="alert">
                 <h4>暫無可用設備</h4>
-                <p>請聯繫管理員添加設備</p>
+                <p class="mb-0">請聯繫管理員新增設備。</p>
             </div>
         }
     </div>
@@ -213,7 +250,7 @@
         <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">載入中...</span>
         </div>
-        <p class="mt-2">處理中...</p>
+        <p class="mt-2 mb-0">處理中...</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

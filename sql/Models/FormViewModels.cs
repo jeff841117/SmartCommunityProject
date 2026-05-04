@@ -40,6 +40,9 @@ namespace sql.Models
         [Required(ErrorMessage = "請輸入設備名稱")]
         public string EquipmentName { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "請選擇設備種類")]
+        public string EquipmentCategory { get; set; } = "場館";
+
         [Range(1, 100, ErrorMessage = "請輸入合理的同時使用上限")]
         public byte MaxUsers { get; set; }
 
@@ -62,6 +65,9 @@ namespace sql.Models
 
         [Required(ErrorMessage = "請輸入設備名稱")]
         public string EquipmentName { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "請選擇設備種類")]
+        public string EquipmentCategory { get; set; } = "場館";
 
         [Range(1, 100, ErrorMessage = "請輸入合理的同時使用上限")]
         public byte MaxUsers { get; set; }

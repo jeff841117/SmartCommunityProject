@@ -96,8 +96,26 @@ namespace sql.Repositories
                 MaxUsers = reader.GetByte(reader.GetOrdinal("MaxUsers")),
                 AvailableTime = reader.GetInt16(reader.GetOrdinal("AvailableTime")),
                 OpenTime = reader.GetTimeSpan(reader.GetOrdinal("OpenTime")),
-                CloseTime = reader.GetTimeSpan(reader.GetOrdinal("CloseTime"))
+                CloseTime = reader.GetTimeSpan(reader.GetOrdinal("CloseTime")),
+                // 舊資料表還沒補欄位時，先預設成「場館」，
+                // 讓前台篩選與顯示不會因為缺欄位直接失敗。
+                EquipmentCategory = HasColumn(reader, "EquipmentCategory")
+                    ? reader.GetString(reader.GetOrdinal("EquipmentCategory"))
+                    : "場館"
             };
+        }
+
+        private static bool HasColumn(SqlDataReader reader, string columnName)
+        {
+            for (var i = 0; i < reader.FieldCount; i++)
+            {
+                if (string.Equals(reader.GetName(i), columnName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

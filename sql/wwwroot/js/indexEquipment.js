@@ -35,6 +35,7 @@
         var equipment = {
             Id: id,
             EquipmentName: $row.find('input[data-field="equipmentName"]').val(),
+            EquipmentCategory: $row.find('[data-field="EquipmentCategory"]').val(),
             MaxUsers: $row.find('input[data-field="MaxUsers"]').val(),
             AvailableTime: $row.find('input[data-field="AvailableTime"]').val(),
             OpenTime: $row.find('input[data-field="OpenTime"]').val(),
@@ -52,6 +53,7 @@
                 if (response.success) {
                     // 更新顯示文本
                     $row.find('.field-display[data-field="equipmentName"]').text(equipment.EquipmentName);
+                    $row.find('.field-display[data-field="EquipmentCategory"]').text(equipment.EquipmentCategory);
                     $row.find('.field-display[data-field="MaxUsers"]').text(equipment.MaxUsers);
                     $row.find('.field-display[data-field="AvailableTime"]').text(equipment.AvailableTime);
                     $row.find('.field-display[data-field="OpenTime"]').text(equipment.OpenTime);

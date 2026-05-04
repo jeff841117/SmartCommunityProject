@@ -149,6 +149,7 @@ namespace sql.Controllers
                 var equipment = new Equipment
                 {
                     equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
                     MaxUsers = form.MaxUsers,
                     AvailableTime = form.AvailableTime,
                     OpenTime = form.OpenTime,
@@ -212,6 +213,7 @@ namespace sql.Controllers
                 {
                     Id = form.Id,
                     equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
                     MaxUsers = form.MaxUsers,
                     AvailableTime = form.AvailableTime,
                     OpenTime = form.OpenTime,

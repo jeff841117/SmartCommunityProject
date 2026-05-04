@@ -3,10 +3,8 @@ using sql.Repositories;
 
 namespace sql.Services
 {
-    // 這個 Service 專門負責未來時段規劃與推算。
-    // 它不直接建立預約，而是先回答兩件事：
-    // 1. 這個時段還能不能預約
-    // 2. 如果現在預約，到時候大概率是直接使用還是先排隊
+    // 這一層專門負責「未來時段規劃」，
+    // 讓前台選日期後，可以拿到當天還有效、且符合規則的時間點。
     public class FutureReservationPlanningService
     {
         public const int DefaultSlotIntervalMinutes = 15;
@@ -57,7 +55,7 @@ namespace sql.Services
                 AvailableTimeMinutes = equipment.AvailableTime,
                 OpenTime = equipment.OpenTime.ToString(@"hh\:mm"),
                 CloseTime = equipment.CloseTime.ToString(@"hh\:mm"),
-                PlanningNote = "系統會先保留未來預約的時段名額，並依目前使用中與排隊中的情況推算，到時若大概率仍需排隊，會先提醒您再決定是否建立預約。"
+                PlanningNote = string.Empty
             };
 
             var openDateTime = targetDateTime.Add(equipment.OpenTime);
@@ -70,17 +68,26 @@ namespace sql.Services
                 var isPastTimeToday = targetDate == DateOnly.FromDateTime(currentTaiwanTime)
                     && slotTime <= currentTaiwanTime;
 
+                // 使用者要求過去時段直接不要顯示，
+                // 所以這裡直接略過，而不是先顯示再標成不可選。
+                if (isPastTimeToday)
+                {
+                    continue;
+                }
+
                 var forecast = BuildForecast(equipment, slotTime, slotEndTime);
-                var isSelectable = !isPastTimeToday && !forecast.HasReservedCapacityConflict;
+                var isSelectable = !forecast.HasReservedCapacityConflict;
 
                 response.Slots.Add(new FutureReservationSlotItem
                 {
                     SlotStartTime = slotTime.ToString("HH:mm"),
                     SlotEndTime = slotEndTime.ToString("HH:mm"),
-                    DisplayLabel = $"{slotTime:HH:mm} - {slotEndTime:HH:mm}",
+                    // 前台下拉只需要顯示開始時間，
+                    // 可使用多久由設備本身的「使用時間」說明承擔。
+                    DisplayLabel = slotTime.ToString("HH:mm"),
                     IsSelectable = isSelectable,
                     RequiresQueueConfirmation = isSelectable && forecast.QueueExpected,
-                    StatusNote = isPastTimeToday ? "該時段已經過去，不能再建立未來預約" : forecast.Message,
+                    StatusNote = forecast.Message,
                     ReservedCapacityCount = forecast.ReservedCapacityCount,
                     ForecastWaitingCount = forecast.ForecastWaitingCount
                 });
@@ -89,7 +96,6 @@ namespace sql.Services
             return response;
         }
 
-        // Repository 建立未來預約前，也會再叫這個推算器確認一次。
         public FutureReservationForecast BuildForecast(byte equipmentId, DateTime reservedStartTime, DateTime reservedEndTime)
         {
             var equipment = _equipmentService.GetEquipment(equipmentId);
@@ -128,7 +134,6 @@ namespace sql.Services
                 };
             }
 
-            // 未來預約本身會先保留名額，所以推算可用容量時要先扣掉。
             var effectiveCapacityAtTarget = Math.Max(0, equipment.MaxUsers - reservedCapacityCount);
             if (effectiveCapacityAtTarget <= 0)
             {
@@ -141,10 +146,6 @@ namespace sql.Services
                 };
             }
 
-            // 這裡採用保守推算：
-            // 1. 先看現在還有幾個立即可補上的空位
-            // 2. 再估算在預約開始前，完整輪轉幾個使用週期
-            // 3. 用這些可消化的人數，去扣目前排隊中的人
             var availableStartsNow = Math.Max(0, equipment.MaxUsers - currentUsers);
             var fullCyclesBeforeSlot = equipment.AvailableTime <= 0
                 ? 0
@@ -160,7 +161,7 @@ namespace sql.Services
                     QueueExpected = true,
                     ReservedCapacityCount = reservedCapacityCount,
                     ForecastWaitingCount = forecastWaitingCount,
-                    Message = $"依目前隊列推算，到這個時段時前面可能仍有 {forecastWaitingCount} 人在等待。若仍要預約，將視為預約排隊並排入尾端。"
+                    Message = $"依目前推算，到這個時段時前方仍可能有 {forecastWaitingCount} 人等待，建立後會先視為預約排隊。"
                 };
             }
 
@@ -170,7 +171,7 @@ namespace sql.Services
                 QueueExpected = false,
                 ReservedCapacityCount = reservedCapacityCount,
                 ForecastWaitingCount = forecastWaitingCount,
-                Message = $"此時段可預約，系統目前預留名額 {reservedCapacityCount}/{equipment.MaxUsers}。"
+                Message = $"此時段目前可規劃，已保留名額 {reservedCapacityCount}/{equipment.MaxUsers}。"
             };
         }
     }

@@ -30,6 +30,18 @@
                 </div>
             </div>
             <div class="form-group row">
+                <label asp-for="EquipmentCategory" class="col-sm-2 col-form-label">設備種類</label>
+                <div class="col-sm-10">
+                    <select asp-for="EquipmentCategory" class="form-select">
+                        <option value="場館">場館</option>
+                        <option value="場地">場地</option>
+                        <option value="其他">其他</option>
+                    </select>
+                    <span asp-validation-for="EquipmentCategory" class="text-danger"></span>
+                    <div class="time-note">目前預約頁會先把既有設備預設視為場館，之後可再依需求調整。</div>
+                </div>
+            </div>
+            <div class="form-group row">
                 <label asp-for="MaxUsers" class="col-sm-2 col-form-label">同時間設備使用上限</label>
                 <div class="col-sm-10">
                     <input asp-for="MaxUsers" type="number" class="form-control" />

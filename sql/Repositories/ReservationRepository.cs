@@ -149,7 +149,7 @@ namespace sql.Repositories
 
                 if (reservedStartTime <= taiwanTime)
                 {
-                    return new ReservationResult { Success = false, Message = "未來預約時間必須晚於目前時間" };
+                    return new ReservationResult { Success = false, Message = "該時段已過期，請刷新頁面" };
                 }
 
                 if (reservedStartTime.TimeOfDay < equipment.OpenTime || reservedStartTime > latestStartTime)

@@ -26,11 +26,21 @@ namespace sql.Services
 
         public void CreateEquipment(Equipment equipment)
         {
+            if (string.IsNullOrWhiteSpace(equipment.EquipmentCategory))
+            {
+                equipment.EquipmentCategory = "場館";
+            }
+
             _equipmentRepository.Create(equipment);
         }
 
         public void UpdateEquipment(Equipment equipment)
         {
+            if (string.IsNullOrWhiteSpace(equipment.EquipmentCategory))
+            {
+                equipment.EquipmentCategory = "場館";
+            }
+
             _equipmentRepository.Update(equipment);
         }
 
