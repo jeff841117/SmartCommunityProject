@@ -35,7 +35,8 @@
         var equipment = {
             Id: id,
             EquipmentName: $row.find('input[data-field="equipmentName"]').val(),
-            EquipmentCategory: $row.find('[data-field="EquipmentCategory"]').val(),
+            // 這裡要抓真正可編輯的 select，不能抓到旁邊的純文字 span。
+            EquipmentCategory: $row.find('.field-edit[data-field="EquipmentCategory"]').val(),
             MaxUsers: $row.find('input[data-field="MaxUsers"]').val(),
             AvailableTime: $row.find('input[data-field="AvailableTime"]').val(),
             OpenTime: $row.find('input[data-field="OpenTime"]').val(),
