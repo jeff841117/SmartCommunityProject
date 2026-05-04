@@ -204,7 +204,12 @@ namespace sql.Controllers
 
             if (!ModelState.IsValid)
             {
-                return Json(ApiResponseFactory.OperationFailure("請確認設備欄位是否填寫正確"));
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認設備欄位是否填寫正確"));
             }
 
             try
@@ -223,9 +228,10 @@ namespace sql.Controllers
                 _equipmentService.UpdateEquipment(equipment);
                 return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
             }
-            catch
+            catch (Exception ex)
             {
-                return RedirectToAction("Privacy");
+                _logger.LogError(ex, "更新設備 {EquipmentId} 時發生錯誤", form.Id);
+                return Json(ApiResponseFactory.OperationFailure("更新設備時發生錯誤，請稍後再試"));
             }
         }
 

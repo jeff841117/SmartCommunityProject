@@ -64,13 +64,13 @@ function updateUserWelcome() {
         type: 'GET',
         success: function (response) {
             if (response.userName) {
-                $('#userWelcome').html(`甇∟?嚗?strong>${response.userName}</strong>嚗);
+                $('#userWelcome').html(`歡迎，<strong>${response.userName}</strong>`);
             } else {
-                $('#userWelcome').html('隢?<a href="/Account/Login">?餃</a>');
+                $('#userWelcome').html('請先<a href="/Account/Login">登入</a>');
             }
         },
         error: function () {
-            $('#userWelcome').html('?⊥?頛雿輻??閮?);
+            $('#userWelcome').html('載入使用者資訊失敗');
         }
     });
 }
@@ -90,7 +90,7 @@ function refreshEquipmentStatus(equipmentId) {
         success: function (response) {
             if (!response.success || !response.data) {
                 setEquipmentAvailabilityState(equipmentId, 'error');
-                $('#status-' + equipmentId).text('???啣仃??).removeClass().addClass('status-offline');
+                $('#status-' + equipmentId).text('載入失敗').removeClass().addClass('status-offline');
                 $('#reserve-btn-' + equipmentId).addClass('disabled-btn').prop('disabled', true);
                 applyEquipmentFiltersAndPagination();
                 return;
@@ -100,7 +100,7 @@ function refreshEquipmentStatus(equipmentId) {
         },
         error: function () {
             setEquipmentAvailabilityState(equipmentId, 'error');
-            $('#status-' + equipmentId).text('???啣仃??).removeClass().addClass('status-offline');
+            $('#status-' + equipmentId).text('載入失敗').removeClass().addClass('status-offline');
             $('#reserve-btn-' + equipmentId).addClass('disabled-btn').prop('disabled', true);
             applyEquipmentFiltersAndPagination();
         }
@@ -125,16 +125,16 @@ function updateEquipmentDisplay(equipmentId, data) {
     checkEquipmentAvailabilityWithTaiwanTime(equipmentId).then(availability => {
         if (!availability.canReserve) {
             setEquipmentAvailabilityState(equipmentId, 'closed');
-            $status.text('?桀?銝雿輻').removeClass().addClass('status-closed');
-            $reserveBtn.text('蝡雿輻').addClass('disabled-btn').prop('disabled', true);
+            $status.text('非開放時間').removeClass().addClass('status-closed');
+            $reserveBtn.text('立即使用').addClass('disabled-btn').prop('disabled', true);
             $queueInfo.hide();
             return;
         }
 
         if (availability.isFull) {
             setEquipmentAvailabilityState(equipmentId, 'queue');
-            $status.text('?桀????').removeClass().addClass('status-full');
-            $reserveBtn.text('???').removeClass('disabled-btn').prop('disabled', false);
+            $status.text('需要排隊').removeClass().addClass('status-full');
+            $reserveBtn.text('加入排隊').removeClass('disabled-btn').prop('disabled', false);
             $queueInfo.show();
 
             const averageUsageTime = availability.averageUsageTime || 30;
@@ -148,16 +148,16 @@ function updateEquipmentDisplay(equipmentId, data) {
             }));
         } else {
             setEquipmentAvailabilityState(equipmentId, 'immediate');
-            $status.text('?舐??喃蝙??).removeClass().addClass('status-available');
-            $reserveBtn.text('蝡雿輻').removeClass('disabled-btn').prop('disabled', false);
+            $status.text('可立即使用').removeClass().addClass('status-available');
+            $reserveBtn.text('立即使用').removeClass('disabled-btn').prop('disabled', false);
             $queueInfo.hide();
         }
 
         applyEquipmentFiltersAndPagination();
     }).catch(() => {
         setEquipmentAvailabilityState(equipmentId, 'error');
-        $status.text('????).removeClass().addClass('status-offline');
-        $reserveBtn.text('蝡雿輻').addClass('disabled-btn').prop('disabled', true);
+        $status.text('載入失敗').removeClass().addClass('status-offline');
+        $reserveBtn.text('立即使用').addClass('disabled-btn').prop('disabled', true);
         applyEquipmentFiltersAndPagination();
     });
 }
@@ -191,7 +191,7 @@ function checkEquipmentAvailabilityWithTaiwanTime(equipmentId) {
             data: { equipmentId: equipmentId },
             success: function (response) {
                 if (!response.success || !response.data) {
-                    reject(response.message || '閮剖??舐?扯??撘隤?);
+                    reject(response.message || '檢查設備可用性時發生錯誤');
                     return;
                 }
 
@@ -243,10 +243,10 @@ function applyEquipmentFiltersAndPagination() {
 
 function buildEquipmentCountLabel(totalItems, totalPages) {
     if (totalItems === 0) {
-        return '?桀?瘝?蝚血?蝭拚璇辣?身??;
+        return '目前沒有符合條件的設備';
     }
 
-    return `?桀???${totalItems} ?啗身???? ${totalPages} ???曉?函洵 ${reservationPageState.currentPage} ?;
+    return `目前共有 ${totalItems} 台設備，共 ${totalPages} 頁，現在顯示第 ${reservationPageState.currentPage} 頁`;
 }
 
 function renderPagination(totalPages) {
@@ -257,10 +257,10 @@ function renderPagination(totalPages) {
         return;
     }
 
-    const $nav = $('<nav aria-label="閮剖???"></nav>');
+    const $nav = $('<nav aria-label="設備分頁"></nav>');
     const $list = $('<ul class="pagination justify-content-center flex-wrap mb-0"></ul>');
 
-    $list.append(createPaginationItem('銝???, reservationPageState.currentPage === 1, function () {
+    $list.append(createPaginationItem('上一頁', reservationPageState.currentPage === 1, function () {
         changePage(reservationPageState.currentPage - 1);
     }));
 
@@ -275,7 +275,7 @@ function renderPagination(totalPages) {
         $list.append($item);
     }
 
-    $list.append(createPaginationItem('銝???, reservationPageState.currentPage === totalPages, function () {
+    $list.append(createPaginationItem('下一頁', reservationPageState.currentPage === totalPages, function () {
         changePage(reservationPageState.currentPage + 1);
     }));
 
@@ -348,16 +348,16 @@ function loadFutureReservationPlanning(equipmentId) {
         },
         success: function (response) {
             if (!response.success || !response.data) {
-                $select.html('<option value="">?挾頛憭望?</option>');
-                $hint.text(response.message || '?⊥????舫?蝝???');
+                $select.html('<option value="">載入失敗</option>');
+                $hint.text(response.message || '目前無法載入可預約時段');
                 return;
             }
 
             renderFutureReservationPlanning(equipmentId, response.data);
         },
         error: function (xhr, status, error) {
-            $select.html('<option value="">?挾頛憭望?</option>');
-            $hint.text('?⊥????舫?蝝???嚗? + error);
+            $select.html('<option value="">載入失敗</option>');
+            $hint.text('目前無法載入可預約時段：' + error);
         }
     });
 }
@@ -367,12 +367,12 @@ function renderFutureReservationPlanning(equipmentId, planning) {
     const selectableSlots = (planning.slots || []).filter(slot => slot.isSelectable);
 
     if (selectableSlots.length === 0) {
-        $select.html('<option value="">?嗅予瘝??舫?蝝???</option>');
-        $('#future-slot-hint-' + equipmentId).text('隢?詨隞??);
+        $select.html('<option value="">當天沒有可預約時段</option>');
+        $('#future-slot-hint-' + equipmentId).text('請改選其他日期。');
         return;
     }
 
-    const options = ['<option value="">隢????/option>']
+    const options = ['<option value="">請選擇預約時間</option>']
         .concat(selectableSlots.map(slot => {
             const queueExpected = slot.requiresQueueConfirmation ? 'true' : 'false';
             const statusNote = escapeHtml(slot.statusNote || '');
@@ -380,7 +380,7 @@ function renderFutureReservationPlanning(equipmentId, planning) {
         }));
 
     $select.html(options.join(''));
-    $('#future-slot-hint-' + equipmentId).text('?豢???敺?臬遣蝡?蝝?);
+    $('#future-slot-hint-' + equipmentId).text('請選擇你要預約的開始時間。');
 }
 
 function updateFutureSlotHint(equipmentId) {
@@ -394,11 +394,11 @@ function updateFutureSlotHint(equipmentId) {
     }
 
     if (queueExpected) {
-        $('#future-slot-hint-' + equipmentId).text(statusNote || '靘?蝞?????銋??航隞?????);
+        $('#future-slot-hint-' + equipmentId).text(statusNote || '此時段依目前推算仍可能需要排隊，建立前請再次確認。');
         return;
     }
 
-    $('#future-slot-hint-' + equipmentId).text(statusNote || '甇斗????桀??舐?亙遣蝡?蝝?);
+    $('#future-slot-hint-' + equipmentId).text(statusNote || '此時段目前可正常建立預約。');
 }
 
 function createFutureReservation(equipmentId) {
@@ -408,13 +408,13 @@ function createFutureReservation(equipmentId) {
     const requiresQueueConfirmation = $selected.data('queue-expected') === true || $selected.data('queue-expected') === 'true';
 
     if (!reservationDate || !slotStartTime) {
-        showError('隢??豢??交?????);
+        showError('請先選擇日期與預約時間');
         return;
     }
 
     const confirmMessage = requiresQueueConfirmation
-        ? `蝟餌絞?函???${reservationDate} ${slotStartTime} ???隞?賣?鈭箸??n\n憒?雿?閬遣蝡?蝟餌絞??靽?????嚗蒂?典暺?閬?????n\n蝣箏?隞?撱箇???`
-        : `蝣箏?閬?蝝?${reservationDate} ${slotStartTime} ?身????嚗;
+        ? `系統推算 ${reservationDate} ${slotStartTime} 這個時段仍可能需要排隊。\n\n如果你同意，系統會建立預約，並在到點後視狀況排入隊列。\n\n是否仍要建立預約？`
+        : `確定要建立 ${reservationDate} ${slotStartTime} 的預約嗎？`;
 
     showConfirm(confirmMessage, function () {
         submitFutureReservation(equipmentId, reservationDate, slotStartTime, requiresQueueConfirmation);
@@ -437,24 +437,24 @@ function submitFutureReservation(equipmentId, reservationDate, slotStartTime, co
             showLoading(false);
 
             if (response.success) {
-                showSuccess(`${response.message}\n\n????嚗?{reservationDate} ${slotStartTime}`);
+                showSuccess(`${response.message}\n\n預約時間：${reservationDate} ${slotStartTime}`);
                 loadFutureReservationPlanning(equipmentId);
                 refreshEquipmentStatus(equipmentId);
                 return;
             }
 
             if (response.requiresConfirmation && response.queueExpected) {
-                showConfirm(`${response.message}\n\n蝣箏?隞?撱箇????芯?????`, function () {
+                showConfirm(`${response.message}\n\n是否仍要建立這筆預約？`, function () {
                     submitFutureReservation(equipmentId, reservationDate, slotStartTime, true);
                 });
                 return;
             }
 
-            showError(response.message || '撱箇??芯???憭望?');
+            showError(response.message || '建立預約失敗');
         },
         error: function (xhr, status, error) {
             showLoading(false);
-            showError('撱箇??芯???憭望?嚗? + error);
+            showError('建立預約失敗：' + error);
         }
     });
 }
@@ -463,18 +463,18 @@ function makeReservation(equipmentId) {
     const $reserveBtn = $('#reserve-btn-' + equipmentId);
 
     if ($reserveBtn.prop('disabled')) {
-        showError('?嗅??⊥?雿輻甇方身??);
+        showError('目前無法立即使用這台設備');
         return;
     }
 
     const currentStatus = $('#status-' + equipmentId).text();
-    const confirmMessage = currentStatus.includes('??')
-        ? '閮剖??桀??閬???蝣箏?閬??交???嚗?
-        : '蝣箏?閬??喃蝙?冽迨閮剖???';
+    const confirmMessage = currentStatus.includes('排隊')
+        ? '這台設備目前需要排隊，是否加入排隊？'
+        : '確定要立即使用這台設備嗎？';
 
     showConfirm(confirmMessage, function () {
         showLoading(true);
-        $reserveBtn.prop('disabled', true).text('??銝?..');
+        $reserveBtn.prop('disabled', true).text('處理中...');
 
         $.ajax({
             url: '/Equipment/MakeReservation',
@@ -487,28 +487,28 @@ function makeReservation(equipmentId) {
                 if (response.success) {
                     let message = response.message;
                     if (response.waitingPosition) {
-                        message += `\n\n??雿蔭嚗洵 ${response.waitingPosition} 雿;
-                        message += `\n??蝑?嚗? ${response.estimatedWaitTime} ??`;
+                        message += `\n\n排隊順位：第 ${response.waitingPosition} 位`;
+                        message += `\n預估等待時間：約 ${response.estimatedWaitTime} 分鐘`;
                     }
 
                     showSuccess(message);
                     refreshEquipmentStatus(equipmentId);
                     refreshAllEquipmentStatus();
                 } else {
-                    showError(response.message || '??憭望?');
+                    showError(response.message || '立即使用失敗');
                 }
             },
             error: function (xhr, status, error) {
                 showLoading(false);
-                $reserveBtn.prop('disabled', false).text(currentStatus.includes('??') ? '???' : '蝡雿輻');
+                $reserveBtn.prop('disabled', false).text(currentStatus.includes('排隊') ? '加入排隊' : '立即使用');
 
                 if (xhr.status === 401) {
-                    showError('隢??餃蝟餌絞');
+                    showError('請先登入再進行預約');
                     setTimeout(() => {
                         window.location.href = '/Account/Login';
                     }, 1500);
                 } else {
-                    showError('雿輻隢?憭望?嚗? + error);
+                    showError('立即使用失敗：' + error);
                 }
             }
         });
