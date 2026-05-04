@@ -53,12 +53,16 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
+            var currentUser = GetCurrentUserInfo();
+
             var viewModel = new AdminActionLogPageViewModel
             {
                 Filter = filter,
                 ActionTypeOptions = AdminActionLogDisplayHelper.GetActionTypeOptions(),
                 TargetTypeOptions = AdminActionLogDisplayHelper.GetTargetTypeOptions(),
-                QueryResult = _adminActionLogService.GetLogs(filter)
+                QueryResult = _adminActionLogService.GetLogs(filter),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
             };
 
             return View(viewModel);

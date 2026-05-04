@@ -1,7 +1,6 @@
 namespace sql.Models
 {
-    // 這是寫入資料庫時使用的最小日誌模型。
-    // Service 層只要描述「誰做了什麼」，Repository 就能負責存入資料表。
+    // 這是寫入資料庫用的管理者操作紀錄模型。
     public class AdminActionLogEntry
     {
         public int AdminUserId { get; set; }
@@ -11,8 +10,7 @@ namespace sql.Models
         public string? Reason { get; set; }
     }
 
-    // 這是列表頁顯示用模型。
-    // 這裡會直接帶好顯示文字，避免 View 自己再判斷 enum。
+    // 這是列表頁顯示用的模型，已經把型別轉成中文文字。
     public class AdminActionLogListItem
     {
         public int Id { get; set; }
@@ -27,8 +25,7 @@ namespace sql.Models
         public DateTime CreatedAt { get; set; }
     }
 
-    // 後台查詢條件統一集中在這裡。
-    // 這樣 controller、service、repository 都能共用同一份搜尋條件。
+    // 操作紀錄查詢頁用的篩選條件。
     public class AdminActionLogFilter
     {
         public string? AdminKeyword { get; set; }
@@ -41,7 +38,7 @@ namespace sql.Models
         public int PageSize { get; set; } = 20;
     }
 
-    // 查詢結果除了資料本身，也要一起帶分頁資訊，這樣頁面才能知道總頁數。
+    // 查詢結果除了資料列表，還包含分頁資訊。
     public class AdminActionLogQueryResult
     {
         public List<AdminActionLogListItem> Items { get; set; } = new();
@@ -57,7 +54,6 @@ namespace sql.Models
         public bool HasNextPage => Page < TotalPages;
     }
 
-    // 下拉選單統一使用這個小模型。
     public class AdminActionFilterOption
     {
         public int Value { get; set; }

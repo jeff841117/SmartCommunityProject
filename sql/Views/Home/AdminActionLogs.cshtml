@@ -1,157 +1,196 @@
 @model sql.Models.AdminActionLogPageViewModel
 @{
     ViewData["Title"] = "管理者操作紀錄";
+    Layout = "";
     var logs = Model.QueryResult.Items;
 }
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/portal-shell.css" rel="stylesheet" asp-append-version="true" />
+</head>
+<body class="portal-body">
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="portal-brand">
+                <h1>智能社區系統</h1>
+                <p>管理者操作紀錄查詢</p>
+            </div>
+            <nav class="portal-nav">
+                <span class="portal-nav-title">管理者功能</span>
+                <a class="portal-nav-link" href="/Equipment/Index">設備管理</a>
+                <a class="portal-nav-link" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
+                <a class="portal-nav-link" href="/Home/Index">帳戶管理系統</a>
+                <a class="portal-nav-link is-active" href="/Home/AdminActionLogs">管理者操作紀錄</a>
 
-<link href="~/css/indexHome.css" rel="stylesheet" asp-append-version="true">
-
-<div class="header-section">
-    <div class="container">
-        <h1 class="display-4 fw-bold">管理者操作紀錄</h1>
-        <p class="lead">查看後台對預約、排隊與未來時段的人工干預紀錄</p>
-    </div>
-</div>
-
-<div class="container">
-    <div class="button-container">
-        <a href="/Home/Index" class="add-equipment-btn">返回帳號管理</a>
-    </div>
-
-    <div class="table-container mb-4">
-        <form method="get" class="row g-3">
-            <div class="col-md-3">
-                <label class="form-label">管理者關鍵字</label>
-                <input asp-for="Filter.AdminKeyword" class="form-control" placeholder="帳號或管理者編號">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">操作類型</label>
-                <select asp-for="Filter.ActionType" class="form-select">
-                    <option value="">全部</option>
-                    @foreach (var option in Model.ActionTypeOptions)
-                    {
-                        <option value="@option.Value">@option.Text</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">目標類型</label>
-                <select asp-for="Filter.TargetType" class="form-select">
-                    <option value="">全部</option>
-                    @foreach (var option in Model.TargetTypeOptions)
-                    {
-                        <option value="@option.Value">@option.Text</option>
-                    }
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">關鍵字</label>
-                <input asp-for="Filter.Keyword" class="form-control" placeholder="原因或目標編號">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">每頁筆數</label>
-                <input asp-for="Filter.PageSize" type="number" min="1" max="100" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">開始日期</label>
-                <input asp-for="Filter.StartDate" type="date" class="form-control">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">結束日期</label>
-                <input asp-for="Filter.EndDate" type="date" class="form-control">
-            </div>
-            <input asp-for="Filter.Page" type="hidden" value="1">
-            <div class="col-md-6 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary">搜尋</button>
-                <a href="/Home/AdminActionLogs" class="btn btn-secondary">清除條件</a>
-                <a asp-action="ExportAdminActionLogs"
-                   asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
-                   asp-route-ActionType="@Model.Filter.ActionType"
-                   asp-route-TargetType="@Model.Filter.TargetType"
-                   asp-route-Keyword="@Model.Filter.Keyword"
-                   asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
-                   asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
-                   asp-route-PageSize="@Model.Filter.PageSize"
-                   class="btn btn-success">匯出 CSV</a>
-            </div>
-        </form>
-    </div>
-
-    <div class="table-container">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div>
-                共找到 <strong>@Model.QueryResult.TotalCount</strong> 筆紀錄，
-                目前第 <strong>@Model.QueryResult.Page</strong> / <strong>@Math.Max(Model.QueryResult.TotalPages, 1)</strong> 頁
-            </div>
-        </div>
-
-        @if (logs.Any())
-        {
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>紀錄編號</th>
-                        <th>時間</th>
-                        <th>管理者</th>
-                        <th>操作類型</th>
-                        <th>目標類型</th>
-                        <th>目標編號</th>
-                        <th>原因說明</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var log in logs)
-                    {
-                        <tr>
-                            <td>@log.Id</td>
-                            <td>@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            <td>@log.AdminUserName (@log.AdminUserId)</td>
-                            <td>@log.ActionTypeText</td>
-                            <td>@log.TargetTypeText</td>
-                            <td>@log.TargetId</td>
-                            <td>@(string.IsNullOrWhiteSpace(log.Reason) ? "未填寫說明" : log.Reason)</td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            <nav aria-label="管理者操作紀錄分頁">
-                <ul class="pagination">
-                    <li class="page-item @(Model.QueryResult.HasPreviousPage ? "" : "disabled")">
-                        <a class="page-link"
-                           asp-action="AdminActionLogs"
-                           asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
-                           asp-route-ActionType="@Model.Filter.ActionType"
-                           asp-route-TargetType="@Model.Filter.TargetType"
-                           asp-route-Keyword="@Model.Filter.Keyword"
-                           asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
-                           asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
-                           asp-route-Page="@(Model.QueryResult.Page - 1)"
-                           asp-route-PageSize="@Model.Filter.PageSize">上一頁</a>
-                    </li>
-                    <li class="page-item disabled">
-                        <span class="page-link">@Model.QueryResult.Page / @Math.Max(Model.QueryResult.TotalPages, 1)</span>
-                    </li>
-                    <li class="page-item @(Model.QueryResult.HasNextPage ? "" : "disabled")">
-                        <a class="page-link"
-                           asp-action="AdminActionLogs"
-                           asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
-                           asp-route-ActionType="@Model.Filter.ActionType"
-                           asp-route-TargetType="@Model.Filter.TargetType"
-                           asp-route-Keyword="@Model.Filter.Keyword"
-                           asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
-                           asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
-                           asp-route-Page="@(Model.QueryResult.Page + 1)"
-                           asp-route-PageSize="@Model.Filter.PageSize">下一頁</a>
-                    </li>
-                </ul>
+                <div class="portal-nav-group">
+                    <span class="portal-nav-title">會員頁面</span>
+                    <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
+                    <a class="portal-nav-link" href="/Equipment/MyReservations">我的預約</a>
+                </div>
             </nav>
-        }
-        else
-        {
-            <div class="alert alert-secondary mb-0">
-                目前查無符合條件的管理者操作紀錄。
+        </aside>
+
+        <main class="portal-main">
+            <div class="portal-topbar">
+                <div class="portal-topbar-title">
+                    <h1>管理者操作紀錄</h1>
+                    <p>可依管理者、操作類型、目標類型與日期區間查詢歷史干預紀錄。</p>
+                </div>
+                <div class="portal-user-panel">
+                    <a href="/Home/Index" class="portal-btn portal-btn-outline">返回帳戶管理</a>
+                    <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
+                    <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
+                </div>
             </div>
-        }
+
+            <div class="portal-content">
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">查詢條件</h2>
+                            <p class="portal-section-subtitle">查詢結果可分頁查看，也可直接匯出 CSV。</p>
+                        </div>
+                        <a asp-action="ExportAdminActionLogs"
+                           asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                           asp-route-ActionType="@Model.Filter.ActionType"
+                           asp-route-TargetType="@Model.Filter.TargetType"
+                           asp-route-Keyword="@Model.Filter.Keyword"
+                           asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                           asp-route-PageSize="@Model.Filter.PageSize"
+                           class="portal-btn portal-btn-primary">匯出 CSV</a>
+                    </div>
+
+                    <form method="get" class="portal-grid three">
+                        <div>
+                            <label class="form-label">管理者關鍵字</label>
+                            <input asp-for="Filter.AdminKeyword" class="form-control" placeholder="例如：admin" />
+                        </div>
+                        <div>
+                            <label class="form-label">操作類型</label>
+                            <select asp-for="Filter.ActionType" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in Model.ActionTypeOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">目標類型</label>
+                            <select asp-for="Filter.TargetType" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in Model.TargetTypeOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">原因關鍵字</label>
+                            <input asp-for="Filter.Keyword" class="form-control" placeholder="例如：調整時段" />
+                        </div>
+                        <div>
+                            <label class="form-label">開始日期</label>
+                            <input asp-for="Filter.StartDate" type="date" class="form-control" />
+                        </div>
+                        <div>
+                            <label class="form-label">結束日期</label>
+                            <input asp-for="Filter.EndDate" type="date" class="form-control" />
+                        </div>
+                        <div>
+                            <label class="form-label">每頁筆數</label>
+                            <input asp-for="Filter.PageSize" type="number" min="1" max="100" class="form-control" />
+                        </div>
+                        <input asp-for="Filter.Page" type="hidden" value="1" />
+                        <div class="d-flex align-items-end gap-2">
+                            <button type="submit" class="portal-btn portal-btn-primary">套用查詢</button>
+                            <a href="/Home/AdminActionLogs" class="portal-btn portal-btn-outline">清除條件</a>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="portal-panel">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">紀錄列表</h2>
+                            <p class="portal-section-subtitle">
+                                共 <strong>@Model.QueryResult.TotalCount</strong> 筆，
+                                第 <strong>@Model.QueryResult.Page</strong> / <strong>@Math.Max(Model.QueryResult.TotalPages, 1)</strong> 頁。
+                            </p>
+                        </div>
+                    </div>
+
+                    @if (logs.Any())
+                    {
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>流水號</th>
+                                        <th>時間</th>
+                                        <th>管理者</th>
+                                        <th>操作類型</th>
+                                        <th>目標類型</th>
+                                        <th>目標編號</th>
+                                        <th>原因摘要</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var log in logs)
+                                    {
+                                        <tr>
+                                            <td>@log.Id</td>
+                                            <td>@log.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                            <td>@log.AdminUserName (@log.AdminUserId)</td>
+                                            <td>@log.ActionTypeText</td>
+                                            <td>@log.TargetTypeText</td>
+                                            <td>@log.TargetId</td>
+                                            <td>@(string.IsNullOrWhiteSpace(log.Reason) ? "未填寫原因" : log.Reason)</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                            <a class="portal-btn portal-btn-outline @(Model.QueryResult.HasPreviousPage ? "" : "disabled")"
+                               asp-action="AdminActionLogs"
+                               asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                               asp-route-ActionType="@Model.Filter.ActionType"
+                               asp-route-TargetType="@Model.Filter.TargetType"
+                               asp-route-Keyword="@Model.Filter.Keyword"
+                               asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-Page="@(Model.QueryResult.Page - 1)"
+                               asp-route-PageSize="@Model.Filter.PageSize">上一頁</a>
+
+                            <span class="portal-form-note">目前第 @Model.QueryResult.Page / @Math.Max(Model.QueryResult.TotalPages, 1) 頁</span>
+
+                            <a class="portal-btn portal-btn-outline @(Model.QueryResult.HasNextPage ? "" : "disabled")"
+                               asp-action="AdminActionLogs"
+                               asp-route-AdminKeyword="@Model.Filter.AdminKeyword"
+                               asp-route-ActionType="@Model.Filter.ActionType"
+                               asp-route-TargetType="@Model.Filter.TargetType"
+                               asp-route-Keyword="@Model.Filter.Keyword"
+                               asp-route-StartDate="@(Model.Filter.StartDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-EndDate="@(Model.Filter.EndDate?.ToString("yyyy-MM-dd"))"
+                               asp-route-Page="@(Model.QueryResult.Page + 1)"
+                               asp-route-PageSize="@Model.Filter.PageSize">下一頁</a>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">目前沒有符合條件的操作紀錄。</div>
+                    }
+                </section>
+            </div>
+        </main>
     </div>
-</div>
+</body>
+</html>

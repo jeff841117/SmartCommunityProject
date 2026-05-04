@@ -1,7 +1,7 @@
 namespace sql.Models
 {
-    // 這個 helper 的目的是把「狀態代碼 -> 顯示文字 / 顏色」集中管理。
-    // 之後前台與後台都盡量從同一個地方取文案，避免同一個狀態出現兩種說法。
+    // 這個 helper 專門把資料庫裡的狀態數字，
+    // 轉成前後台都能共用的中文文字與樣式 class。
     public static class ReservationDisplayHelper
     {
         public static string GetStatusText(int status)
@@ -12,8 +12,8 @@ namespace sql.Models
                 (int)ReservationStatus.InProgress => "使用中",
                 (int)ReservationStatus.Completed => "已完成",
                 (int)ReservationStatus.Cancelled => "已取消",
-                (int)ReservationStatus.Scheduled => "已預約未開始",
-                (int)ReservationStatus.ScheduledQueueExpected => "已預約，預估到點仍需排隊",
+                (int)ReservationStatus.Scheduled => "已預約",
+                (int)ReservationStatus.ScheduledQueueExpected => "已預約，預計需排隊",
                 _ => "未知狀態"
             };
         }
@@ -36,7 +36,7 @@ namespace sql.Models
         {
             return queueType switch
             {
-                2 => "預約到點後轉排隊",
+                2 => "預約轉排隊",
                 _ => "一般即時排隊"
             };
         }

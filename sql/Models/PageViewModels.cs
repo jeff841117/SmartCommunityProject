@@ -34,6 +34,8 @@
         public List<ReservationDashboardFilterOption> ScheduledStatusOptions { get; set; } = new();
         public List<ReservationDashboardFilterOption> WaitingQueueTypeOptions { get; set; } = new();
         public ReservationDashboardResponse Dashboard { get; set; } = new();
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
     }
 
     public class AdminActionLogPageViewModel
@@ -42,6 +44,8 @@
         public List<AdminActionFilterOption> ActionTypeOptions { get; set; } = new();
         public List<AdminActionFilterOption> TargetTypeOptions { get; set; } = new();
         public AdminActionLogQueryResult QueryResult { get; set; } = new();
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
     }
 
     public class MyReservationsPageViewModel

@@ -62,12 +62,16 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
+            var currentUser = GetCurrentUserInfo();
+
             var viewModel = new ReservationManagementPageViewModel
             {
                 Filter = filter,
                 ScheduledStatusOptions = ReservationDashboardFilterOptions.GetScheduledStatusOptions(),
                 WaitingQueueTypeOptions = ReservationDashboardFilterOptions.GetWaitingQueueTypeOptions(),
-                Dashboard = _reservationService.GetReservationDashboard(filter)
+                Dashboard = _reservationService.GetReservationDashboard(filter),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
             };
 
             return View(viewModel);

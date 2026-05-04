@@ -3,7 +3,6 @@
     ViewData["Title"] = "預約與排隊總覽";
     Layout = "";
 }
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -11,655 +10,266 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="~/css/portal-shell.css" rel="stylesheet" asp-append-version="true" />
 </head>
-<body class="bg-light">
+<body class="portal-body">
     <input type="hidden" id="currentChainEquipmentId" value="" />
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="portal-brand">
+                <h1>智能社區系統</h1>
+                <p>預約與排隊後台總覽</p>
+            </div>
+            <nav class="portal-nav">
+                <span class="portal-nav-title">管理者功能</span>
+                <a class="portal-nav-link" href="/Equipment/Index">設備管理</a>
+                <a class="portal-nav-link is-active" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
+                <a class="portal-nav-link" href="/Home/Index">帳戶管理系統</a>
+                <a class="portal-nav-link" href="/Home/AdminActionLogs">管理者操作紀錄</a>
+                <div class="portal-nav-group">
+                    <span class="portal-nav-title">會員頁面</span>
+                    <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
+                    <a class="portal-nav-link" href="/Equipment/MyReservations">我的預約</a>
+                </div>
+            </nav>
+        </aside>
 
-    <div class="container py-4">
-        <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 mb-4">
-            <div>
-                <h1 class="fw-bold mb-1">預約與排隊總覽</h1>
-                <p class="text-muted mb-0">這裡集中查看未來預約、使用中、排隊中與設備壓力摘要，方便管理者快速判斷要先處理哪一台設備。</p>
+        <main class="portal-main">
+            <div class="portal-topbar">
+                <div class="portal-topbar-title">
+                    <h1>預約與排隊總覽</h1>
+                    <p>集中查看設備壓力、未來預約、使用中與排隊資料。</p>
+                </div>
+                <div class="portal-user-panel">
+                    <a href="/Equipment/Index" class="portal-btn portal-btn-outline">返回設備管理</a>
+                    <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
+                    <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
+                </div>
             </div>
-            <div class="text-lg-end">
-                <a href="/Equipment/Index" class="btn btn-outline-secondary">回設備管理</a>
-                <div class="small text-muted mt-2">目前台灣時間：@Model.Dashboard.ServerTaiwanTime</div>
-            </div>
-        </div>
 
-        <div class="card mb-4">
-            <div class="card-header bg-secondary text-white">
-                <h5 class="mb-0">篩選條件</h5>
-            </div>
-            <div class="card-body">
-                <form method="get" class="row g-3">
-                    <div class="col-md-3">
-                        <label asp-for="Filter.EquipmentKeyword" class="form-label">設備關鍵字</label>
-                        <input asp-for="Filter.EquipmentKeyword" class="form-control" placeholder="例如：健身房" />
-                    </div>
-                    <div class="col-md-3">
-                        <label asp-for="Filter.UserKeyword" class="form-label">會員關鍵字</label>
-                        <input asp-for="Filter.UserKeyword" class="form-control" placeholder="例如：jeff" />
-                    </div>
-                    <div class="col-md-3">
-                        <label asp-for="Filter.ScheduledStatus" class="form-label">未來預約狀態</label>
-                        <select asp-for="Filter.ScheduledStatus" class="form-select">
-                            <option value="">全部</option>
-                            @foreach (var option in Model.ScheduledStatusOptions)
-                            {
-                                <option value="@option.Value">@option.Text</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label asp-for="Filter.WaitingQueueType" class="form-label">排隊類型</label>
-                        <select asp-for="Filter.WaitingQueueType" class="form-select">
-                            <option value="">全部</option>
-                            @foreach (var option in Model.WaitingQueueTypeOptions)
-                            {
-                                <option value="@option.Value">@option.Text</option>
-                            }
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-flex align-items-end">
-                        <div class="form-check mb-2">
-                            <input asp-for="Filter.RiskOnly" class="form-check-input" />
-                            <label asp-for="Filter.RiskOnly" class="form-check-label">只看高風險設備</label>
+            <div class="portal-content">
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">總覽篩選</h2>
+                            <p class="portal-section-subtitle">可用設備、會員、狀態與風險條件縮小範圍。</p>
                         </div>
-                    </div>
-                    <div class="col-12 d-flex flex-wrap gap-2">
-                        <button type="submit" class="btn btn-primary">套用篩選</button>
-                        <a href="/Equipment/ReservationDashboard" class="btn btn-outline-secondary">清除條件</a>
                         <a asp-action="ExportReservationDashboard"
                            asp-route-EquipmentKeyword="@Model.Filter.EquipmentKeyword"
                            asp-route-UserKeyword="@Model.Filter.UserKeyword"
                            asp-route-ScheduledStatus="@Model.Filter.ScheduledStatus"
                            asp-route-WaitingQueueType="@Model.Filter.WaitingQueueType"
                            asp-route-RiskOnly="@Model.Filter.RiskOnly"
-                           class="btn btn-success">匯出目前總覽 CSV</a>
+                           class="portal-btn portal-btn-primary">匯出總覽 CSV</a>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <div class="row g-3 mb-4">
-            <div class="col-md-4">
-                <div class="card border-info h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">未來預約</div>
-                        <div class="fs-3 fw-bold">@Model.Dashboard.ScheduledReservations.Count</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-primary h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">使用中</div>
-                        <div class="fs-3 fw-bold">@Model.Dashboard.ActiveReservations.Count</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card border-warning h-100">
-                    <div class="card-body">
-                        <div class="text-muted small">排隊中</div>
-                        <div class="fs-3 fw-bold">@Model.Dashboard.WaitingReservations.Count</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header bg-dark text-white">
-                <h5 class="mb-0">設備摘要</h5>
-            </div>
-            <div class="card-body">
-                @if (Model.Dashboard.EquipmentSummaries.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>設備</th>
-                                    <th>未來預約</th>
-                                    <th>使用中</th>
-                                    <th>排隊中</th>
-                                    <th>預約排隊風險</th>
-                                    <th>高風險預約</th>
-                                    <th>壓力等級</th>
-                                    <th>摘要說明</th>
-                                    <th>設備鏈</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var summary in Model.Dashboard.EquipmentSummaries)
+                    <form method="get" class="portal-grid three">
+                        <div>
+                            <label asp-for="Filter.EquipmentKeyword" class="form-label">設備關鍵字</label>
+                            <input asp-for="Filter.EquipmentKeyword" class="form-control" placeholder="例如：游泳池" />
+                        </div>
+                        <div>
+                            <label asp-for="Filter.UserKeyword" class="form-label">會員關鍵字</label>
+                            <input asp-for="Filter.UserKeyword" class="form-control" placeholder="例如：jeff" />
+                        </div>
+                        <div>
+                            <label asp-for="Filter.ScheduledStatus" class="form-label">未來預約狀態</label>
+                            <select asp-for="Filter.ScheduledStatus" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in Model.ScheduledStatusOptions)
                                 {
-                                    <tr>
-                                        <td>@summary.EquipmentName</td>
-                                        <td>@summary.ScheduledCount</td>
-                                        <td>@summary.ActiveCount</td>
-                                        <td>@summary.WaitingCount</td>
-                                        <td>@summary.QueueExpectedCount</td>
-                                        <td>@summary.RiskyScheduledCount</td>
-                                        <td>
-                                            <span class="badge @summary.PressureCssClass">@summary.PressureLevel</span>
-                                        </td>
-                                        <td class="small text-muted">@summary.PressureSummary</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                    type="button"
-                                                    onclick="loadEquipmentChain(@summary.EquipmentId)">
-                                                查看設備鏈
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <option value="@option.Value">@option.Text</option>
                                 }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-muted">目前沒有符合篩選條件的設備摘要資料。</div>
-                }
-            </div>
-        </div>
-
-        <div class="card mb-4">
-            <div class="card-header bg-info text-white">
-                <h5 class="mb-0">未來預約</h5>
-            </div>
-            <div class="card-body">
-                @if (Model.Dashboard.ScheduledReservations.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>設備</th>
-                                    <th>會員</th>
-                                    <th>預約時段</th>
-                                    <th>狀態</th>
-                                    <th>風險摘要</th>
-                                    <th>建立時間</th>
-                                    <th>設備鏈</th>
-                                    <th>管理操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var reservation in Model.Dashboard.ScheduledReservations)
+                            </select>
+                        </div>
+                        <div>
+                            <label asp-for="Filter.WaitingQueueType" class="form-label">排隊類型</label>
+                            <select asp-for="Filter.WaitingQueueType" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in Model.WaitingQueueTypeOptions)
                                 {
-                                    <tr>
-                                        <td>@reservation.EquipmentName</td>
-                                        <td>@reservation.UserId</td>
-                                        <td>@reservation.ReservedStartTime.ToString("yyyy-MM-dd HH:mm") - @reservation.ReservedEndTime.ToString("HH:mm")</td>
-                                        <td>
-                                            <span class="badge @(reservation.QueueExpected ? "bg-warning text-dark" : "bg-info text-dark")">
-                                                @reservation.StatusText
-                                            </span>
-                                        </td>
-                                        <td class="small text-muted">@reservation.RiskSummary</td>
-                                        <td>@reservation.ReservationTime.ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                    type="button"
-                                                    onclick="loadEquipmentChain(@reservation.EquipmentId)">
-                                                查看
-                                            </button>
-                                        </td>
-                                        <td class="d-flex flex-wrap gap-2">
-                                            <button class="btn btn-sm btn-outline-secondary"
-                                                    type="button"
-                                                    onclick="openRescheduleModal(@reservation.Id, '@reservation.ReservedStartTime.ToString("yyyy-MM-dd")', '@reservation.ReservedStartTime.ToString("HH:mm")')">
-                                                調整時段
-                                            </button>
-                                            <button class="btn btn-sm btn-outline-danger"
-                                                    type="button"
-                                                    onclick="forceCancelScheduledReservation(@reservation.Id)">
-                                                取消預約
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <option value="@option.Value">@option.Text</option>
                                 }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-muted">目前沒有符合篩選條件的未來預約資料。</div>
-                }
-            </div>
-        </div>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-end">
+                            <div class="form-check">
+                                <input asp-for="Filter.RiskOnly" class="form-check-input" />
+                                <label asp-for="Filter.RiskOnly" class="form-check-label">只看高風險設備</label>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-end gap-2">
+                            <button type="submit" class="portal-btn portal-btn-primary">套用篩選</button>
+                            <a href="/Equipment/ReservationDashboard" class="portal-btn portal-btn-outline">清除條件</a>
+                        </div>
+                    </form>
+                </section>
 
-        <div class="card mb-4">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">使用中</h5>
-            </div>
-            <div class="card-body">
-                @if (Model.Dashboard.ActiveReservations.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>設備</th>
-                                    <th>會員</th>
-                                    <th>開始時間</th>
-                                    <th>剩餘時間</th>
-                                    <th>狀態</th>
-                                    <th>管理操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var reservation in Model.Dashboard.ActiveReservations)
-                                {
-                                    <tr>
-                                        <td>@reservation.EquipmentName</td>
-                                        <td>@reservation.UserId</td>
-                                        <td>@reservation.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td>@reservation.RemainingTime 分鐘</td>
-                                        <td><span class="badge bg-primary">@reservation.StatusText</span></td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-danger"
-                                                    type="button"
-                                                    onclick="forceEndUsage(@reservation.Id)">
-                                                強制結束使用
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else
-                {
-                    <div class="text-muted">目前沒有符合篩選條件的使用中資料。</div>
-                }
-            </div>
-        </div>
+                <section class="portal-grid three mb-4">
+                    <article class="portal-panel"><div class="portal-section-subtitle">未來預約</div><div class="fs-3 fw-bold">@Model.Dashboard.ScheduledReservations.Count</div></article>
+                    <article class="portal-panel"><div class="portal-section-subtitle">使用中</div><div class="fs-3 fw-bold">@Model.Dashboard.ActiveReservations.Count</div></article>
+                    <article class="portal-panel"><div class="portal-section-subtitle">排隊中</div><div class="fs-3 fw-bold">@Model.Dashboard.WaitingReservations.Count</div></article>
+                </section>
 
-        <div class="card">
-            <div class="card-header bg-warning text-dark">
-                <h5 class="mb-0">排隊中</h5>
-            </div>
-            <div class="card-body">
-                @if (Model.Dashboard.WaitingReservations.Any())
-                {
-                    <div class="table-responsive">
-                        <table class="table table-striped align-middle">
-                            <thead>
-                                <tr>
-                                    <th>設備</th>
-                                    <th>會員</th>
-                                    <th>順位</th>
-                                    <th>排隊時間</th>
-                                    <th>排隊類型</th>
-                                    <th>設備鏈</th>
-                                    <th>管理操作</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var queue in Model.Dashboard.WaitingReservations)
-                                {
-                                    <tr>
-                                        <td>@queue.EquipmentName</td>
-                                        <td>@queue.UserId</td>
-                                        <td>第 @queue.Position 位</td>
-                                        <td>@queue.QueueTime.ToString("yyyy-MM-dd HH:mm")</td>
-                                        <td>@queue.QueueTypeText</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary"
-                                                    type="button"
-                                                    onclick="loadEquipmentChain(@queue.EquipmentId)">
-                                                查看
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-danger"
-                                                    type="button"
-                                                    onclick="forceCancelQueue(@queue.Id)">
-                                                移除排隊
-                                            </button>
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">設備摘要</h2>
+                            <p class="portal-section-subtitle">先看每台設備目前的壓力與風險。</p>
+                        </div>
                     </div>
-                }
-                else
-                {
-                    <div class="text-muted">目前沒有符合篩選條件的排隊資料。</div>
-                }
+                    @if (Model.Dashboard.EquipmentSummaries.Any())
+                    {
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover align-middle">
+                                <thead>
+                                    <tr><th>設備</th><th>未來預約</th><th>使用中</th><th>排隊中</th><th>預約排隊風險</th><th>高風險預約</th><th>壓力</th><th>摘要</th><th>操作</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var summary in Model.Dashboard.EquipmentSummaries)
+                                    {
+                                        <tr>
+                                            <td>@summary.EquipmentName</td>
+                                            <td>@summary.ScheduledCount</td>
+                                            <td>@summary.ActiveCount</td>
+                                            <td>@summary.WaitingCount</td>
+                                            <td>@summary.QueueExpectedCount</td>
+                                            <td>@summary.RiskyScheduledCount</td>
+                                            <td><span class="badge @summary.PressureCssClass">@summary.PressureLevel</span></td>
+                                            <td class="small text-muted">@summary.PressureSummary</td>
+                                            <td><button class="portal-btn portal-btn-outline portal-btn-sm" type="button" onclick="loadEquipmentChain(@summary.EquipmentId)">查看設備鏈</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">目前沒有符合條件的設備摘要。</div>
+                    }
+                </section>
+
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header"><div><h2 class="portal-section-title">未來預約</h2><p class="portal-section-subtitle">可直接調整時段、取消預約，並查看風險摘要。</p></div></div>
+                    @if (Model.Dashboard.ScheduledReservations.Any())
+                    {
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover align-middle">
+                                <thead>
+                                    <tr><th>設備</th><th>會員</th><th>預約時段</th><th>狀態</th><th>風險摘要</th><th>建立時間</th><th>設備鏈</th><th>操作</th></tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var reservation in Model.Dashboard.ScheduledReservations)
+                                    {
+                                        <tr>
+                                            <td>@reservation.EquipmentName</td>
+                                            <td>@reservation.UserId</td>
+                                            <td>@reservation.ReservedStartTime.ToString("yyyy-MM-dd HH:mm") - @reservation.ReservedEndTime.ToString("HH:mm")</td>
+                                            <td><span class="badge @(reservation.QueueExpected ? "bg-warning text-dark" : "bg-info text-dark")">@reservation.StatusText</span></td>
+                                            <td class="small text-muted">@reservation.RiskSummary</td>
+                                            <td>@reservation.ReservationTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td><button class="portal-btn portal-btn-outline portal-btn-sm" type="button" onclick="loadEquipmentChain(@reservation.EquipmentId)">查看</button></td>
+                                            <td class="d-flex flex-wrap gap-2">
+                                                <button class="portal-btn portal-btn-outline portal-btn-sm" type="button" onclick="openRescheduleModal(@reservation.Id, '@reservation.ReservedStartTime.ToString("yyyy-MM-dd")', '@reservation.ReservedStartTime.ToString("HH:mm")')">調整時段</button>
+                                                <button class="portal-btn portal-btn-danger portal-btn-sm" type="button" onclick="forceCancelScheduledReservation(@reservation.Id)">取消預約</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">目前沒有符合條件的未來預約。</div>
+                    }
+                </section>
+
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header"><div><h2 class="portal-section-title">使用中</h2><p class="portal-section-subtitle">管理者可直接強制結束使用。</p></div></div>
+                    @if (Model.Dashboard.ActiveReservations.Any())
+                    {
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover align-middle">
+                                <thead><tr><th>設備</th><th>會員</th><th>開始時間</th><th>剩餘時間</th><th>狀態</th><th>操作</th></tr></thead>
+                                <tbody>
+                                    @foreach (var reservation in Model.Dashboard.ActiveReservations)
+                                    {
+                                        <tr>
+                                            <td>@reservation.EquipmentName</td>
+                                            <td>@reservation.UserId</td>
+                                            <td>@reservation.StartTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>@reservation.RemainingTime 分鐘</td>
+                                            <td><span class="badge bg-primary">@reservation.StatusText</span></td>
+                                            <td><button class="portal-btn portal-btn-danger portal-btn-sm" type="button" onclick="forceEndUsage(@reservation.Id)">強制結束</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">目前沒有使用中的預約。</div>
+                    }
+                </section>
+
+                <section class="portal-panel">
+                    <div class="portal-section-header"><div><h2 class="portal-section-title">排隊中</h2><p class="portal-section-subtitle">可查看一般排隊與預約轉排隊。</p></div></div>
+                    @if (Model.Dashboard.WaitingReservations.Any())
+                    {
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover align-middle">
+                                <thead><tr><th>設備</th><th>會員</th><th>順位</th><th>排隊時間</th><th>排隊類型</th><th>設備鏈</th><th>操作</th></tr></thead>
+                                <tbody>
+                                    @foreach (var queue in Model.Dashboard.WaitingReservations)
+                                    {
+                                        <tr>
+                                            <td>@queue.EquipmentName</td>
+                                            <td>@queue.UserId</td>
+                                            <td>第 @queue.Position 位</td>
+                                            <td>@queue.QueueTime.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>@queue.QueueTypeText</td>
+                                            <td><button class="portal-btn portal-btn-outline portal-btn-sm" type="button" onclick="loadEquipmentChain(@queue.EquipmentId)">查看</button></td>
+                                            <td><button class="portal-btn portal-btn-danger portal-btn-sm" type="button" onclick="forceCancelQueue(@queue.Id)">移除排隊</button></td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">目前沒有排隊中的紀錄。</div>
+                    }
+                </section>
             </div>
-        </div>
+        </main>
     </div>
 
-    <div class="modal fade" id="equipmentChainModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="equipmentChainTitle">設備預約／排隊鏈</h5>
-                    <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-success" onclick="exportCurrentEquipmentChain()">
-                            匯出設備鏈 CSV
-                        </button>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                </div>
-                <div class="modal-body" id="equipmentChainBody">
-                    <div class="text-muted">載入中...</div>
-                </div>
-            </div>
-        </div>
+    <div class="modal fade portal-modal" id="equipmentChainModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="equipmentChainTitle">設備預約／排隊鏈</h5><div class="d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-success" onclick="exportCurrentEquipmentChain()">匯出設備鏈 CSV</button><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div></div><div class="modal-body" id="equipmentChainBody"><div class="text-muted">載入中...</div></div></div></div>
     </div>
 
-    <div class="modal fade" id="rescheduleModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">調整未來預約時段</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <input type="hidden" id="rescheduleReservationId" />
-                    <div class="mb-3">
-                        <label for="rescheduleReservationDate" class="form-label">新的預約日期</label>
-                        <input type="date" class="form-control" id="rescheduleReservationDate" />
-                    </div>
-                    <div class="mb-3">
-                        <label for="rescheduleReservationTime" class="form-label">新的開始時段</label>
-                        <input type="time" class="form-control" id="rescheduleReservationTime" step="900" />
-                        <div class="form-text">每 15 分鐘為一個時段，例如 09:00、09:15、09:30。</div>
-                    </div>
-                    <div id="reschedulePreviewBox" class="alert alert-secondary small mb-3">
-                        先按「預覽影響」查看調整後的狀態、保留名額與可能排隊情況，再決定是否送出。
-                    </div>
-                    <div class="small text-muted">
-                        如果新時段依目前推算仍可能排隊，系統會先提醒管理者，再決定是否強制套用。
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="previewRescheduleImpact()">預覽影響</button>
-                    <button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">送出調整</button>
-                </div>
-            </div>
-        </div>
+    <div class="modal fade portal-modal" id="rescheduleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">調整未來預約時段</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><input type="hidden" id="rescheduleReservationId" /><div class="mb-3"><label for="rescheduleReservationDate" class="form-label">預約日期</label><input type="date" class="form-control" id="rescheduleReservationDate" /></div><div class="mb-3"><label for="rescheduleReservationTime" class="form-label">開始時間</label><input type="time" class="form-control" id="rescheduleReservationTime" step="900" /><div class="form-text">以 15 分鐘為單位，例如 09:00、09:15、09:30。</div></div><div id="reschedulePreviewBox" class="alert alert-secondary small mb-3">先按「預覽影響」，系統會告訴你這次調整後是直接保留名額，還是會變成預約排隊。</div><div class="small text-muted">管理者調整時段仍會沿用和前台相同的規則。</div></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-outline-primary" onclick="previewRescheduleImpact()">預覽影響</button><button type="button" class="btn btn-primary" onclick="submitRescheduleReservation(false)">確認調整</button></div></div></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         const rescheduleModal = new bootstrap.Modal(document.getElementById('rescheduleModal'));
-
-        function forceEndUsage(reservationId) {
-            if (!confirm('確定要強制結束這筆使用中的預約嗎？')) {
-                return;
-            }
-
-            $.post('/Equipment/ForceEndUsage', { reservationId: reservationId })
-                .done(function (response) {
-                    if (response.success) {
-                        alert(response.message);
-                        window.location.reload();
-                        return;
-                    }
-
-                    alert(response.message || '強制結束使用失敗。');
-                })
-                .fail(function () {
-                    alert('強制結束使用失敗，請稍後再試。');
-                });
-        }
-
-        function forceCancelScheduledReservation(reservationId) {
-            if (!confirm('確定要取消這筆未來預約嗎？')) {
-                return;
-            }
-
-            $.post('/Equipment/ForceCancelScheduledReservation', { reservationId: reservationId })
-                .done(function (response) {
-                    if (response.success) {
-                        alert(response.message);
-                        window.location.reload();
-                        return;
-                    }
-
-                    alert(response.message || '取消未來預約失敗。');
-                })
-                .fail(function () {
-                    alert('取消未來預約失敗，請稍後再試。');
-                });
-        }
-
-        function forceCancelQueue(queueId) {
-            if (!confirm('確定要移除這筆排隊紀錄嗎？')) {
-                return;
-            }
-
-            $.post('/Equipment/ForceCancelQueue', { queueId: queueId })
-                .done(function (response) {
-                    if (response.success) {
-                        alert(response.message);
-                        window.location.reload();
-                        return;
-                    }
-
-                    alert(response.message || '移除排隊失敗。');
-                })
-                .fail(function () {
-                    alert('移除排隊失敗，請稍後再試。');
-                });
-        }
-
-        function openRescheduleModal(reservationId, reservationDate, reservationTime) {
-            document.getElementById('rescheduleReservationId').value = reservationId;
-            document.getElementById('rescheduleReservationDate').value = reservationDate;
-            document.getElementById('rescheduleReservationTime').value = reservationTime;
-            resetReschedulePreview();
-            rescheduleModal.show();
-        }
-
-        function resetReschedulePreview() {
-            const box = document.getElementById('reschedulePreviewBox');
-            box.className = 'alert alert-secondary small mb-3';
-            box.innerHTML = '先按「預覽影響」查看調整後的狀態、保留名額與可能排隊情況，再決定是否送出。';
-        }
-
-        function previewRescheduleImpact() {
-            const reservationId = document.getElementById('rescheduleReservationId').value;
-            const reservationDate = document.getElementById('rescheduleReservationDate').value;
-            const selectedSlotStartTime = document.getElementById('rescheduleReservationTime').value;
-            const box = document.getElementById('reschedulePreviewBox');
-
-            if (!reservationDate || !selectedSlotStartTime) {
-                box.className = 'alert alert-warning small mb-3';
-                box.innerHTML = '請先填寫新的日期與時段。';
-                return;
-            }
-
-            box.className = 'alert alert-secondary small mb-3';
-            box.innerHTML = '預覽計算中...';
-
-            $.get('/Equipment/PreviewRescheduleScheduledReservation', {
-                reservationId: reservationId,
-                reservationDate: reservationDate,
-                selectedSlotStartTime: selectedSlotStartTime
-            })
-                .done(function (response) {
-                    if (!response.success || !response.data) {
-                        box.className = 'alert alert-danger small mb-3';
-                        box.innerHTML = response.message || '預覽調整影響失敗。';
-                        return;
-                    }
-
-                    const preview = response.data;
-                    if (!preview.canReschedule) {
-                        box.className = 'alert alert-danger small mb-3';
-                        box.innerHTML = preview.message || '這筆預約目前無法調整。';
-                        return;
-                    }
-
-                    const details = [
-                        `調整後狀態：${preview.targetStatusText}`,
-                        `已保留名額：${preview.reservedCapacityCount}`,
-                        `推算前方等待人數：${preview.forecastWaitingCount}`,
-                        `新時段：${preview.scheduledStartTimeText} - ${preview.scheduledEndTimeText}`
-                    ];
-
-                    box.className = preview.queueExpected
-                        ? 'alert alert-warning small mb-3'
-                        : 'alert alert-success small mb-3';
-                    box.innerHTML = `
-                        <div class="fw-semibold mb-1">${preview.message}</div>
-                        <div>${details.join('，')}</div>
-                    `;
-                })
-                .fail(function () {
-                    box.className = 'alert alert-danger small mb-3';
-                    box.innerHTML = '預覽調整影響時發生錯誤，請稍後再試。';
-                });
-        }
-
-        function submitRescheduleReservation(confirmQueueExpected) {
-            const reservationId = document.getElementById('rescheduleReservationId').value;
-            const reservationDate = document.getElementById('rescheduleReservationDate').value;
-            const selectedSlotStartTime = document.getElementById('rescheduleReservationTime').value;
-
-            if (!reservationDate || !selectedSlotStartTime) {
-                alert('請先填寫新的日期與時段。');
-                return;
-            }
-
-            $.post('/Equipment/ForceRescheduleScheduledReservation', {
-                reservationId: reservationId,
-                reservationDate: reservationDate,
-                selectedSlotStartTime: selectedSlotStartTime,
-                confirmQueueExpected: confirmQueueExpected
-            })
-                .done(function (response) {
-                    if (response.success) {
-                        rescheduleModal.hide();
-                        alert(response.message);
-                        window.location.reload();
-                        return;
-                    }
-
-                    if (response.requiresConfirmation && response.queueExpected) {
-                        const message = response.message || '依目前推算，調整後仍可能需要排隊。是否仍要套用？';
-                        if (confirm(message)) {
-                            submitRescheduleReservation(true);
-                        }
-                        return;
-                    }
-
-                    alert(response.message || '調整預約時段失敗。');
-                })
-                .fail(function () {
-                    alert('調整預約時段失敗，請稍後再試。');
-                });
-        }
-
-        function loadEquipmentChain(equipmentId) {
-            document.getElementById('currentChainEquipmentId').value = equipmentId;
-
-            $.get('/Equipment/GetEquipmentReservationChain', { equipmentId: equipmentId })
-                .done(function (response) {
-                    if (!response.success || !response.data) {
-                        alert(response.message || '取得設備鏈資料失敗。');
-                        return;
-                    }
-
-                    renderEquipmentChain(response.data);
-                    const modal = new bootstrap.Modal(document.getElementById('equipmentChainModal'));
-                    modal.show();
-                })
-                .fail(function () {
-                    alert('取得設備鏈資料失敗。');
-                });
-        }
-
-        function exportCurrentEquipmentChain() {
-            const equipmentId = document.getElementById('currentChainEquipmentId').value;
-            if (!equipmentId) {
-                alert('請先選擇要查看的設備。');
-                return;
-            }
-
-            window.location.href = `/Equipment/ExportEquipmentReservationChain?equipmentId=${equipmentId}`;
-        }
-
-        function renderEquipmentChain(chain) {
-            $('#equipmentChainTitle').text(`${chain.equipmentName} 的預約／排隊鏈`);
-
-            const scheduledRows = (chain.scheduledReservations || []).map(item => `
-                <tr>
-                    <td>${item.userId}</td>
-                    <td>${formatDateTime(item.reservedStartTime)}</td>
-                    <td>${formatDateTime(item.reservedEndTime)}</td>
-                    <td>${item.statusText}</td>
-                    <td class="small text-muted">${item.riskSummary || ''}</td>
-                </tr>
-            `).join('');
-
-            const activeRows = (chain.activeReservations || []).map(item => `
-                <tr>
-                    <td>${item.userId}</td>
-                    <td>${formatDateTime(item.startTime)}</td>
-                    <td>${item.remainingTime} 分鐘</td>
-                    <td>${item.statusText}</td>
-                </tr>
-            `).join('');
-
-            const waitingRows = (chain.waitingReservations || []).map(item => `
-                <tr>
-                    <td>${item.userId}</td>
-                    <td>第 ${item.position} 位</td>
-                    <td>${item.queueTypeText}</td>
-                    <td>${formatDateTime(item.queueTime)}</td>
-                </tr>
-            `).join('');
-
-            $('#equipmentChainBody').html(`
-                <div class="mb-4">
-                    <h6>未來預約</h6>
-                    ${scheduledRows
-                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>結束</th><th>狀態</th><th>風險摘要</th></tr></thead><tbody>${scheduledRows}</tbody></table>`
-                        : '<div class="text-muted">目前沒有未來預約。</div>'}
-                </div>
-                <div class="mb-4">
-                    <h6>使用中</h6>
-                    ${activeRows
-                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>`
-                        : '<div class="text-muted">目前沒有使用中資料。</div>'}
-                </div>
-                <div>
-                    <h6>排隊中</h6>
-                    ${waitingRows
-                        ? `<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>排隊類型</th><th>排隊時間</th></tr></thead><tbody>${waitingRows}</tbody></table>`
-                        : '<div class="text-muted">目前沒有排隊資料。</div>'}
-                </div>
-            `);
-        }
-
-        function formatDateTime(value) {
-            const date = new Date(value);
-            if (isNaN(date.getTime())) {
-                return value || '';
-            }
-
-            return date.toLocaleString('zh-TW', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: false
-            }).replace(/\//g, '-');
-        }
+        function forceEndUsage(reservationId){ if(!confirm('確認要強制結束這筆使用中的預約嗎？')) return; $.post('/Equipment/ForceEndUsage',{reservationId}).done(r=>{ if(r.success){ alert(r.message); window.location.reload(); return;} alert(r.message||'強制結束使用失敗。');}).fail(()=>alert('強制結束使用失敗，請稍後再試。')); }
+        function forceCancelScheduledReservation(reservationId){ if(!confirm('確認要取消這筆未來預約嗎？')) return; $.post('/Equipment/ForceCancelScheduledReservation',{reservationId}).done(r=>{ if(r.success){ alert(r.message); window.location.reload(); return;} alert(r.message||'取消未來預約失敗。');}).fail(()=>alert('取消未來預約失敗，請稍後再試。')); }
+        function forceCancelQueue(queueId){ if(!confirm('確認要移除這筆排隊紀錄嗎？')) return; $.post('/Equipment/ForceCancelQueue',{queueId}).done(r=>{ if(r.success){ alert(r.message); window.location.reload(); return;} alert(r.message||'移除排隊紀錄失敗。');}).fail(()=>alert('移除排隊紀錄失敗，請稍後再試。')); }
+        function openRescheduleModal(id,date,time){ $('#rescheduleReservationId').val(id); $('#rescheduleReservationDate').val(date); $('#rescheduleReservationTime').val(time); resetReschedulePreview(); rescheduleModal.show(); }
+        function resetReschedulePreview(){ $('#reschedulePreviewBox').attr('class','alert alert-secondary small mb-3').text('先按「預覽影響」，系統會告訴你這次調整後是直接保留名額，還是會變成預約排隊。'); }
+        function previewRescheduleImpact(){ const reservationId=$('#rescheduleReservationId').val(), reservationDate=$('#rescheduleReservationDate').val(), selectedSlotStartTime=$('#rescheduleReservationTime').val(); const box=$('#reschedulePreviewBox'); if(!reservationDate||!selectedSlotStartTime){ box.attr('class','alert alert-warning small mb-3').text('請先選擇新的預約日期與開始時間。'); return; } box.attr('class','alert alert-secondary small mb-3').text('正在計算影響...'); $.get('/Equipment/PreviewRescheduleScheduledReservation',{reservationId,reservationDate,selectedSlotStartTime}).done(r=>{ if(!r.success||!r.data){ box.attr('class','alert alert-danger small mb-3').text(r.message||'預覽調整影響失敗。'); return;} const p=r.data; if(!p.canReschedule){ box.attr('class','alert alert-danger small mb-3').text(p.message||'這筆預約目前不能調整。'); return;} const details=[`調整後狀態：${p.targetStatusText}`,`保留名額數：${p.reservedCapacityCount}`,`預估前方等待人數：${p.forecastWaitingCount}`,`新時段：${p.scheduledStartTimeText} - ${p.scheduledEndTimeText}`]; box.attr('class',p.queueExpected?'alert alert-warning small mb-3':'alert alert-success small mb-3').html(`<div class="fw-semibold mb-1">${p.message}</div><div>${details.join('；')}</div>`); }).fail(()=>box.attr('class','alert alert-danger small mb-3').text('預覽調整影響失敗，請稍後再試。')); }
+        function submitRescheduleReservation(confirmQueueExpected){ const reservationId=$('#rescheduleReservationId').val(), reservationDate=$('#rescheduleReservationDate').val(), selectedSlotStartTime=$('#rescheduleReservationTime').val(); if(!reservationDate||!selectedSlotStartTime){ alert('請先選擇新的預約日期與開始時間。'); return; } $.post('/Equipment/ForceRescheduleScheduledReservation',{reservationId,reservationDate,selectedSlotStartTime,confirmQueueExpected}).done(r=>{ if(r.success){ rescheduleModal.hide(); alert(r.message); window.location.reload(); return;} if(r.requiresConfirmation&&r.queueExpected){ if(confirm(r.message||'調整後預計仍需排隊，是否仍要建立這筆預約？')) submitRescheduleReservation(true); return;} alert(r.message||'調整未來預約時段失敗。'); }).fail(()=>alert('調整未來預約時段失敗，請稍後再試。')); }
+        function loadEquipmentChain(equipmentId){ $('#currentChainEquipmentId').val(equipmentId); $.get('/Equipment/GetEquipmentReservationChain',{equipmentId}).done(r=>{ if(!r.success||!r.data){ alert(r.message||'取得設備預約鏈失敗。'); return;} renderEquipmentChain(r.data); new bootstrap.Modal(document.getElementById('equipmentChainModal')).show(); }).fail(()=>alert('取得設備預約鏈失敗。')); }
+        function exportCurrentEquipmentChain(){ const equipmentId=$('#currentChainEquipmentId').val(); if(!equipmentId){ alert('請先選擇設備鏈資料。'); return;} window.location.href=`/Equipment/ExportEquipmentReservationChain?equipmentId=${equipmentId}`; }
+        function renderEquipmentChain(chain){ $('#equipmentChainTitle').text(`${chain.equipmentName} 的預約／排隊鏈`); const scheduledRows=(chain.scheduledReservations||[]).map(i=>`<tr><td>${i.userId}</td><td>${formatDateTime(i.reservedStartTime)}</td><td>${formatDateTime(i.reservedEndTime)}</td><td>${i.statusText}</td><td class="small text-muted">${i.riskSummary||''}</td></tr>`).join(''); const activeRows=(chain.activeReservations||[]).map(i=>`<tr><td>${i.userId}</td><td>${formatDateTime(i.startTime)}</td><td>${i.remainingTime} 分鐘</td><td>${i.statusText}</td></tr>`).join(''); const waitingRows=(chain.waitingReservations||[]).map(i=>`<tr><td>${i.userId}</td><td>第 ${i.position} 位</td><td>${i.queueTypeText}</td><td>${formatDateTime(i.queueTime)}</td></tr>`).join(''); $('#equipmentChainBody').html(`<div class="mb-4"><h6>未來預約</h6>${scheduledRows?`<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始</th><th>結束</th><th>狀態</th><th>風險摘要</th></tr></thead><tbody>${scheduledRows}</tbody></table>`:'<div class="text-muted">目前沒有未來預約。</div>'}</div><div class="mb-4"><h6>使用中</h6>${activeRows?`<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>開始時間</th><th>剩餘時間</th><th>狀態</th></tr></thead><tbody>${activeRows}</tbody></table>`:'<div class="text-muted">目前沒有使用中紀錄。</div>'}</div><div><h6>排隊中</h6>${waitingRows?`<table class="table table-sm table-striped"><thead><tr><th>會員</th><th>順位</th><th>排隊類型</th><th>排隊時間</th></tr></thead><tbody>${waitingRows}</tbody></table>`:'<div class="text-muted">目前沒有排隊紀錄。</div>'}</div>`); }
+        function formatDateTime(value){ const date=new Date(value); if(isNaN(date.getTime())) return value||''; return date.toLocaleString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false}).replace(/\//g,'-'); }
     </script>
 </body>
 </html>
