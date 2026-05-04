@@ -136,19 +136,31 @@ namespace sql.Repositories
                 connection.Open();
             }
 
-            using var cmd = new SqlCommand(@"
-                IF COL_LENGTH('Equipment', 'EquipmentCategory') IS NULL
-                BEGIN
-                    ALTER TABLE Equipment
-                    ADD EquipmentCategory NVARCHAR(20) NOT NULL
-                        CONSTRAINT DF_Equipment_EquipmentCategory DEFAULT N'場館';
+            using var checkCmd = new SqlCommand(
+                "SELECT COL_LENGTH('Equipment', 'EquipmentCategory')",
+                connection);
+            var columnLength = checkCmd.ExecuteScalar();
+            if (columnLength != DBNull.Value && columnLength != null)
+            {
+                return;
+            }
 
-                    UPDATE Equipment
-                    SET EquipmentCategory = N'場館'
-                    WHERE EquipmentCategory IS NULL;
-                END", connection);
+            // 這裡故意拆成兩段 SQL 執行。
+            // 原因是 SQL Server 會先編譯整個批次，
+            // 如果 ALTER TABLE 和 UPDATE 寫在同一批，後面的 UPDATE 可能會在欄位建立前就先被判定成錯誤。
+            using var alterCmd = new SqlCommand(@"
+                ALTER TABLE Equipment
+                ADD EquipmentCategory NVARCHAR(20) NOT NULL
+                    CONSTRAINT DF_Equipment_EquipmentCategory DEFAULT N'場館';",
+                connection);
+            alterCmd.ExecuteNonQuery();
 
-            cmd.ExecuteNonQuery();
+            using var updateCmd = new SqlCommand(@"
+                UPDATE Equipment
+                SET EquipmentCategory = N'場館'
+                WHERE EquipmentCategory IS NULL;",
+                connection);
+            updateCmd.ExecuteNonQuery();
         }
     }
 }
