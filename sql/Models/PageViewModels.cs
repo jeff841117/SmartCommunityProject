@@ -6,6 +6,9 @@
     public class EquipmentManagementPageViewModel
     {
         public List<Equipment> Equipments { get; set; } = new();
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
+        public AddEquipmentFormViewModel AddEquipmentForm { get; set; } = new();
     }
 
     public class EquipmentReservationPageViewModel
@@ -13,11 +16,16 @@
         public List<Equipment> Equipments { get; set; } = new();
         public int SlotIntervalMinutes { get; set; }
         public int AdvanceReservationDays { get; set; }
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
     }
 
     public class AccountManagementPageViewModel
     {
         public List<account> Accounts { get; set; } = new();
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
+        public AddAccountFormViewModel AddAccountForm { get; set; } = new();
     }
 
     public class ReservationManagementPageViewModel
@@ -34,5 +42,11 @@
         public List<AdminActionFilterOption> ActionTypeOptions { get; set; } = new();
         public List<AdminActionFilterOption> TargetTypeOptions { get; set; } = new();
         public AdminActionLogQueryResult QueryResult { get; set; } = new();
+    }
+
+    public class MyReservationsPageViewModel
+    {
+        public string CurrentUserName { get; set; } = string.Empty;
+        public bool IsManager { get; set; }
     }
 }

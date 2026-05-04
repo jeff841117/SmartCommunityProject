@@ -1,6 +1,6 @@
-﻿@model sql.Models.EquipmentManagementPageViewModel
+@model sql.Models.EquipmentManagementPageViewModel
 @{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "設備管理";
     Layout = "";
 }
 
@@ -10,125 +10,205 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"]</title>
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/portal-shell.css" rel="stylesheet" asp-append-version="true">
     <link href="~/css/indexEquipment.css" rel="stylesheet" asp-append-version="true">
 </head>
-<body>
-    <div class="header-section">
-        <div class="container">
-            <h1 class="display-4 fw-bold">設備管理系統</h1>
-            <p class="lead">管理所有設備的詳細信息和可用性</p>
-        </div>
-    </div>
-    <div class="container">
-        <div class="button-container">
-            <a href="/Equipment/addEquipment" class="add-equipment-btn">新增設備</a>
-        </div>
-        <div class="button-container">
-            <a href="/Equipment/Reservation" class="add-equipment-btn">查看預約狀態</a>
-        </div>
-        <div class="button-container">
-            <a href="/Equipment/ReservationDashboard" class="add-equipment-btn">預約與排隊總覽</a>
-        </div>
-        <div class="button-container">
-            <a href="/Home/Index" class="add-equipment-btn">查看帳號</a>
-        </div>
-        <div class="table-container">
-            <table class="table table-hover table-striped">
-                <thead class="table-dark">
-                    <tr>
-                        <th width="50">
-                            <input type="checkbox" id="selectAll">
-                        </th>
-                        <th>編號</th>
-                        <th>設備名稱</th>
-                        <th>設備種類</th>
-                        <th>同時上限人數</th>
-                        <th>可使用時間</th>
-                        <th>開放時間</th>
-                        <th>關閉時間</th>
-                        <th width="150">操作</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var user in Model.Equipments)
-                    {
-                        <tr data-id="@user.Id">
-                            <td>
-                                <input type="checkbox" class="row-checkbox">
-                            </td>
-                            <td>@user.Id</td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="equipmentName">@user.equipmentName</span>
-                                <input type="text" class="field-edit form-control" value="@user.equipmentName" style="display: none;" data-field="equipmentName" />
-                            </td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="EquipmentCategory">@user.EquipmentCategory</span>
-                                <select class="field-edit form-select" style="display: none;" data-field="EquipmentCategory">
-                                    @if (user.EquipmentCategory == "場館")
-                                    {
-                                        <option value="場館" selected>場館</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="場館">場館</option>
-                                    }
-                                    @if (user.EquipmentCategory == "場地")
-                                    {
-                                        <option value="場地" selected>場地</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="場地">場地</option>
-                                    }
-                                    @if (user.EquipmentCategory == "其他")
-                                    {
-                                        <option value="其他" selected>其他</option>
-                                    }
-                                    else
-                                    {
-                                        <option value="其他">其他</option>
-                                    }
+<body class="portal-body">
+    <div class="modal fade portal-modal" id="addEquipmentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新增設備</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addEquipmentForm">
+                    <div class="modal-body">
+                        <div id="addEquipmentError" class="alert alert-danger d-none" role="alert"></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentName">設備名稱</label>
+                                <input id="addEquipmentName" name="EquipmentName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentCategory">設備種類</label>
+                                <select id="addEquipmentCategory" name="EquipmentCategory" class="form-select">
+                                    <option value="場館">場館</option>
+                                    <option value="場地">場地</option>
+                                    <option value="其他">其他</option>
                                 </select>
-                            </td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="MaxUsers">@user.MaxUsers</span>
-                                <input type="number" class="field-edit form-control" value="@user.MaxUsers" style="display: none;" data-field="MaxUsers" />
-                            </td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="AvailableTime">@user.AvailableTime</span>
-                                <input type="number" class="field-edit form-control" value="@user.AvailableTime" style="display: none;" data-field="AvailableTime" />
-                            </td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="OpenTime">@user.OpenTime.ToString(@"hh\:mm")</span>
-                                <input type="time" class="field-edit form-control" value="@user.OpenTime.ToString(@"hh\:mm")" style="display: none;" data-field="OpenTime" />
-                            </td>
-                            <td class="editable-field">
-                                <span class="field-display" data-field="CloseTime">@user.CloseTime.ToString(@"hh\:mm")</span>
-                                <input type="time" class="field-edit form-control" value="@user.CloseTime.ToString(@"hh\:mm")" style="display: none;" data-field="CloseTime" />
-                            </td>
-                            <td class="table-actions">
-                                <button class="btn btn-sm btn-outline-primary edit-btn">編輯</button>
-                                <button class="btn btn-sm btn-outline-success save-btn" style="display: none;">確定</button>
-                                <button class="btn btn-sm btn-outline-secondary cancel-btn" style="display: none;">取消</button>
-                                <form method="post" action="/Equipment/deleteEquipment" style="display: inline;">
-                                    <input type="hidden" name="id" value="@user.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger"
-                                            onclick="return confirm('確定要刪除設備 @user.equipmentName 嗎？')">
-                                        刪除
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentMaxUsers">同時上限人數</label>
+                                <input id="addEquipmentMaxUsers" name="MaxUsers" type="number" min="1" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentAvailableTime">可使用時間（分鐘）</label>
+                                <input id="addEquipmentAvailableTime" name="AvailableTime" type="number" min="1" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentOpenTime">開放時間</label>
+                                <input id="addEquipmentOpenTime" name="OpenTime" type="time" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addEquipmentCloseTime">關閉時間</label>
+                                <input id="addEquipmentCloseTime" name="CloseTime" type="time" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">新增設備</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
-    <!-- Bootstrap 5 JS Bundle with Popper -->
-    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="portal-brand">
+                <h1>智能社區系統</h1>
+                <p>設備管理後台</p>
+            </div>
+            <nav class="portal-nav">
+                <span class="portal-nav-title">管理功能</span>
+                <a class="portal-nav-link is-active" href="/Equipment/Index">設備管理</a>
+                <a class="portal-nav-link" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
+                <a class="portal-nav-link" href="/Home/Index">帳戶管理</a>
+                <a class="portal-nav-link" href="/Home/AdminActionLogs">管理者操作紀錄</a>
+
+                <div class="portal-nav-group">
+                    <span class="portal-nav-title">會員頁面</span>
+                    <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
+                    <a class="portal-nav-link" href="/Equipment/MyReservations">我的預約</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="portal-main">
+            <div class="portal-topbar">
+                <div class="portal-topbar-title">
+                    <h1>設備管理</h1>
+                    <p>編輯設備資料、檢查開放時段與維護設備種類</p>
+                </div>
+                <div class="portal-user-panel">
+                    <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
+                    <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
+                </div>
+            </div>
+
+            <div class="portal-content">
+                <section class="portal-panel">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">設備列表</h2>
+                            <p class="portal-section-subtitle">在同一頁直接維護設備名稱、種類、時段與使用上限</p>
+                        </div>
+                        <div class="portal-toolbar">
+                            <button type="button" class="portal-btn portal-btn-primary" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">新增設備</button>
+                            <a href="/Equipment/ReservationDashboard" class="portal-btn portal-btn-outline">查看預約與排隊總覽</a>
+                        </div>
+                    </div>
+
+                    <div class="portal-table-panel">
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th width="50">
+                                            <input type="checkbox" id="selectAll">
+                                        </th>
+                                        <th>編號</th>
+                                        <th>設備名稱</th>
+                                        <th>設備種類</th>
+                                        <th>同時上限人數</th>
+                                        <th>可使用時間</th>
+                                        <th>開放時間</th>
+                                        <th>關閉時間</th>
+                                        <th width="180">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var equipment in Model.Equipments)
+                                    {
+                                        <tr data-id="@equipment.Id">
+                                            <td>
+                                                <input type="checkbox" class="row-checkbox">
+                                            </td>
+                                            <td>@equipment.Id</td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="equipmentName">@equipment.equipmentName</span>
+                                                <input type="text" class="field-edit form-control" value="@equipment.equipmentName" style="display: none;" data-field="equipmentName" />
+                                            </td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="EquipmentCategory">@equipment.EquipmentCategory</span>
+                                                <select class="field-edit form-select" style="display: none;" data-field="EquipmentCategory">
+                                                    @if (equipment.EquipmentCategory == "場館")
+                                                    {
+                                                        <option value="場館" selected>場館</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="場館">場館</option>
+                                                    }
+                                                    @if (equipment.EquipmentCategory == "場地")
+                                                    {
+                                                        <option value="場地" selected>場地</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="場地">場地</option>
+                                                    }
+                                                    @if (equipment.EquipmentCategory == "其他")
+                                                    {
+                                                        <option value="其他" selected>其他</option>
+                                                    }
+                                                    else
+                                                    {
+                                                        <option value="其他">其他</option>
+                                                    }
+                                                </select>
+                                            </td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="MaxUsers">@equipment.MaxUsers</span>
+                                                <input type="number" class="field-edit form-control" value="@equipment.MaxUsers" style="display: none;" data-field="MaxUsers" />
+                                            </td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="AvailableTime">@equipment.AvailableTime</span>
+                                                <input type="number" class="field-edit form-control" value="@equipment.AvailableTime" style="display: none;" data-field="AvailableTime" />
+                                            </td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="OpenTime">@equipment.OpenTime.ToString(@"hh\:mm")</span>
+                                                <input type="time" class="field-edit form-control" value="@equipment.OpenTime.ToString(@"hh\:mm")" style="display: none;" data-field="OpenTime" />
+                                            </td>
+                                            <td class="editable-field">
+                                                <span class="field-display" data-field="CloseTime">@equipment.CloseTime.ToString(@"hh\:mm")</span>
+                                                <input type="time" class="field-edit form-control" value="@equipment.CloseTime.ToString(@"hh\:mm")" style="display: none;" data-field="CloseTime" />
+                                            </td>
+                                            <td class="table-actions">
+                                                <button class="btn btn-sm btn-outline-primary edit-btn">編輯</button>
+                                                <button class="btn btn-sm btn-outline-success save-btn" style="display: none;">確定</button>
+                                                <button class="btn btn-sm btn-outline-secondary cancel-btn" style="display: none;">取消</button>
+                                                <form method="post" action="/Equipment/deleteEquipment" style="display: inline;">
+                                                    <input type="hidden" name="id" value="@equipment.Id" />
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                            onclick="return confirm('確定要刪除設備 @equipment.equipmentName 嗎？')">
+                                                        刪除
+                                                    </button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/indexEquipment.js" asp-append-version="true"></script>

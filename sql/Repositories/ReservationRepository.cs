@@ -774,6 +774,26 @@ namespace sql.Repositories
             return historyReservations;
         }
 
+        // 歷史紀錄超過一個月後，這裡會在載入我的預約前先做一次清理。
+        // 目前先針對已完成與已取消的資料清掉，避免歷史列表越堆越大。
+        public void DeleteHistoryReservationsOlderThan(string userKey, DateTime cutoffTime)
+        {
+            using var connection = _dbManager.CreateConnection();
+            using var cmd = new SqlCommand(@"
+                DELETE FROM Reservations
+                WHERE UserId = @UserId
+                  AND Status IN (@CompletedStatus, @CancelledStatus)
+                  AND ReservationTime < @CutoffTime", connection);
+
+            cmd.Parameters.AddWithValue("@UserId", userKey);
+            cmd.Parameters.AddWithValue("@CompletedStatus", (int)ReservationStatus.Completed);
+            cmd.Parameters.AddWithValue("@CancelledStatus", (int)ReservationStatus.Cancelled);
+            cmd.Parameters.AddWithValue("@CutoffTime", cutoffTime);
+
+            connection.Open();
+            cmd.ExecuteNonQuery();
+        }
+
         public Equipment? GetEquipmentById(byte equipmentId)
         {
             using var connection = _dbManager.CreateConnection();

@@ -1,41 +1,44 @@
-﻿$(document).ready(function () {
-    // 編輯按鈕點擊事件
-    $('.edit-btn').click(function () {
-        var $row = $(this).closest('tr');
-        // 隱藏編輯按鈕，顯示保存和取消按鈕
+$(document).ready(function () {
+    const addEquipmentModalElement = document.getElementById('addEquipmentModal');
+    const addEquipmentModal = addEquipmentModalElement
+        ? bootstrap.Modal.getOrCreateInstance(addEquipmentModalElement)
+        : null;
+
+    $('.edit-btn').on('click', function () {
+        const $row = $(this).closest('tr');
         $(this).hide();
         $row.find('.save-btn, .cancel-btn').show();
-        // 隱藏顯示文本，顯示輸入框
         $row.find('.field-display').hide();
         $row.find('.field-edit').show();
     });
 
-    // 取消按鈕點擊事件
-    $('.cancel-btn').click(function () {
-        var $row = $(this).closest('tr');
-        // 顯示編輯按鈕，隱藏保存和取消按鈕
+    $('.cancel-btn').on('click', function () {
+        const $row = $(this).closest('tr');
         $row.find('.edit-btn').show();
         $row.find('.save-btn, .cancel-btn').hide();
-        // 顯示顯示文本，隱藏輸入框，並重置輸入框的值（取消修改）
+
         $row.find('.field-edit').each(function () {
-            var $input = $(this);
-            var $display = $input.siblings('.field-display');
-            $input.val($display.text());
+            const $input = $(this);
+            const $display = $input.siblings('.field-display');
+            if ($input.is('select')) {
+                $input.val($display.text().trim());
+            } else {
+                $input.val($display.text().trim());
+            }
         });
+
         $row.find('.field-display').show();
         $row.find('.field-edit').hide();
     });
 
-    // 保存按鈕點擊事件
-    $('.save-btn').click(function () {
-        var $row = $(this).closest('tr');
-        var id = $row.data('id');
+    $('.save-btn').on('click', function () {
+        const $row = $(this).closest('tr');
+        const id = $row.data('id');
 
-        // 確保屬性名稱與 Equipment 類別完全一致
-        var equipment = {
+        const equipment = {
             Id: id,
             EquipmentName: $row.find('input[data-field="equipmentName"]').val(),
-            // 這裡要抓真正可編輯的 select，不能抓到旁邊的純文字 span。
+            // 這裡一定要抓編輯中的 select，否則會抓到顯示用 span 導致設備種類沒送出去。
             EquipmentCategory: $row.find('.field-edit[data-field="EquipmentCategory"]').val(),
             MaxUsers: $row.find('input[data-field="MaxUsers"]').val(),
             AvailableTime: $row.find('input[data-field="AvailableTime"]').val(),
@@ -43,36 +46,62 @@
             CloseTime: $row.find('input[data-field="CloseTime"]').val()
         };
 
-        console.log('發送數據:', equipment); // 除錯用
-
-        // 發送AJAX請求到伺服器
         $.ajax({
             url: '/Equipment/UpdateEquipment',
             type: 'POST',
             data: equipment,
             success: function (response) {
-                if (response.success) {
-                    // 更新顯示文本
-                    $row.find('.field-display[data-field="equipmentName"]').text(equipment.EquipmentName);
-                    $row.find('.field-display[data-field="EquipmentCategory"]').text(equipment.EquipmentCategory);
-                    $row.find('.field-display[data-field="MaxUsers"]').text(equipment.MaxUsers);
-                    $row.find('.field-display[data-field="AvailableTime"]').text(equipment.AvailableTime);
-                    $row.find('.field-display[data-field="OpenTime"]').text(equipment.OpenTime);
-                    $row.find('.field-display[data-field="CloseTime"]').text(equipment.CloseTime);
-
-                    // 切換回顯示模式
-                    $row.find('.edit-btn').show();
-                    $row.find('.save-btn, .cancel-btn').hide();
-                    $row.find('.field-display').show();
-                    $row.find('.field-edit').hide();
-
-                    alert('更新成功');
-                } else {
-                    alert('更新失敗: ' + response.message);
+                if (!response.success) {
+                    alert('更新失敗：' + (response.message || '請稍後再試'));
+                    return;
                 }
+
+                $row.find('.field-display[data-field="equipmentName"]').text(equipment.EquipmentName);
+                $row.find('.field-display[data-field="EquipmentCategory"]').text(equipment.EquipmentCategory);
+                $row.find('.field-display[data-field="MaxUsers"]').text(equipment.MaxUsers);
+                $row.find('.field-display[data-field="AvailableTime"]').text(equipment.AvailableTime);
+                $row.find('.field-display[data-field="OpenTime"]').text(equipment.OpenTime);
+                $row.find('.field-display[data-field="CloseTime"]').text(equipment.CloseTime);
+
+                $row.find('.edit-btn').show();
+                $row.find('.save-btn, .cancel-btn').hide();
+                $row.find('.field-display').show();
+                $row.find('.field-edit').hide();
+
+                alert('更新成功');
             },
             error: function (xhr, status, error) {
-                alert('請求失敗: ' + error);
+                alert('更新失敗：' + error);
+            }
+        });
+    });
+
+    $('#addEquipmentForm').on('submit', function (event) {
+        event.preventDefault();
+
+        const $form = $(this);
+        const $error = $('#addEquipmentError');
+        $error.addClass('d-none').text('');
+
+        $.ajax({
+            url: '/Equipment/CreateEquipmentModal',
+            type: 'POST',
+            data: $form.serialize(),
+            success: function (response) {
+                if (!response.success) {
+                    $error.removeClass('d-none').text(response.message || '新增設備失敗');
+                    return;
+                }
+
+                if (addEquipmentModal) {
+                    addEquipmentModal.hide();
+                }
+
+                $form[0].reset();
+                window.location.reload();
+            },
+            error: function (xhr, status, error) {
+                $error.removeClass('d-none').text('新增設備失敗：' + error);
             }
         });
     });

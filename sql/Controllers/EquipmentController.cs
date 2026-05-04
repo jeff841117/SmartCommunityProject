@@ -42,9 +42,13 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
+            var currentUser = GetCurrentUserInfo();
+
             var viewModel = new EquipmentManagementPageViewModel
             {
-                Equipments = _equipmentService.GetAllEquipments()
+                Equipments = _equipmentService.GetAllEquipments(),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
             };
 
             return View(viewModel);
@@ -125,6 +129,46 @@ namespace sql.Controllers
             }
 
             return View(new AddEquipmentFormViewModel());
+        }
+
+        [HttpPost]
+        public JsonResult CreateEquipmentModal(AddEquipmentFormViewModel form)
+        {
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認設備資料是否填寫正確"));
+            }
+
+            try
+            {
+                var equipment = new Equipment
+                {
+                    equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
+                    MaxUsers = form.MaxUsers,
+                    AvailableTime = form.AvailableTime,
+                    OpenTime = form.OpenTime,
+                    CloseTime = form.CloseTime
+                };
+
+                _equipmentService.CreateEquipment(equipment);
+                return Json(ApiResponseFactory.OperationSuccess("新增設備成功"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "透過彈窗新增設備時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure("新增設備失敗，請稍後再試"));
+            }
         }
 
         // 設備新增這裡改成走 EquipmentService，
@@ -540,7 +584,9 @@ namespace sql.Controllers
             {
                 IsLoggedIn = true,
                 UserId = currentUser.UserId,
-                UserName = currentUser.UserName
+                UserName = currentUser.UserName,
+                Role = currentUser.Role,
+                IsManager = currentUser.IsManager
             });
         }
 
@@ -552,11 +598,15 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
+            var currentUser = GetCurrentUserInfo();
+
             var viewModel = new EquipmentReservationPageViewModel
             {
                 Equipments = _equipmentService.GetAllEquipments(),
                 SlotIntervalMinutes = _futureReservationPlanningService.GetSlotIntervalMinutes(),
-                AdvanceReservationDays = _futureReservationPlanningService.GetAdvanceReservationDays()
+                AdvanceReservationDays = _futureReservationPlanningService.GetAdvanceReservationDays(),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
             };
 
             return View(viewModel);
@@ -601,7 +651,12 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
-            return View();
+            var currentUser = GetCurrentUserInfo();
+            return View(new MyReservationsPageViewModel
+            {
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            });
         }
 
         // 「我的預約」頁面的主要資料來源。

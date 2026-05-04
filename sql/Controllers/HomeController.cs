@@ -31,11 +31,15 @@ namespace sql.Controllers
                 return accessRedirect;
             }
 
+            var currentUser = GetCurrentUserInfo();
+
             // 帳號列表現在改成走 AccountService，
             // 這樣 Controller 就不需要自己 new DBmanager。
             var viewModel = new AccountManagementPageViewModel
             {
-                Accounts = _accountService.GetAllAccounts()
+                Accounts = _accountService.GetAllAccounts(),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
             };
 
             return View(viewModel);
@@ -109,6 +113,39 @@ namespace sql.Controllers
             }
 
             return View(new AddAccountFormViewModel());
+        }
+
+        [HttpPost]
+        public JsonResult CreateAccountModal(AddAccountFormViewModel form)
+        {
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認帳號資料是否填寫正確"));
+            }
+
+            var user = new account
+            {
+                userName = form.UserName,
+                password = form.Password,
+                age = form.Age,
+                email = form.Email,
+                phone = form.Phone
+            };
+
+            var created = _accountService.CreateAccount(user);
+            return Json(created
+                ? ApiResponseFactory.OperationSuccess("新增帳號成功")
+                : ApiResponseFactory.OperationFailure("新增帳號失敗"));
         }
 
         [HttpPost]

@@ -164,6 +164,8 @@ namespace sql.Services
             }
 
             var taiwanTime = GetTaiwanTime();
+            var historyRetentionCutoff = taiwanTime.AddMonths(-1);
+            _reservationRepository.DeleteHistoryReservationsOlderThan(currentUser.ReservationUserKey, historyRetentionCutoff);
             var scheduledReservations = _reservationRepository.GetScheduledReservations(currentUser.ReservationUserKey);
             var activeReservations = _reservationRepository.GetActiveReservations(currentUser.ReservationUserKey);
             var waitingReservations = _reservationRepository.GetWaitingQueues(currentUser.ReservationUserKey);
