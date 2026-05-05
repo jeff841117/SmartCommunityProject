@@ -6,26 +6,12 @@ namespace sql.Models
 {
     public class ReservationObserverManager
     {
-        private static ReservationObserverManager _instance;
+        private static ReservationObserverManager? _instance;
         private static readonly object _lock = new object();
-        private Dictionary<byte, ReservationSubject> _subjects = new Dictionary<byte, ReservationSubject>();
-        private DBmanager _dbManager = new DBmanager();
+        private readonly Dictionary<byte, ReservationSubject> _subjects = new Dictionary<byte, ReservationSubject>();
 
         private ReservationObserverManager()
         {
-            var equipments = _dbManager.getEquipment();
-            foreach (var equipment in equipments)
-            {
-                var subject = new ReservationSubject
-                {
-                    EquipmentId = equipment.Id,
-                    CurrentUsers = _dbManager.GetCurrentUsers(equipment.Id),
-                    WaitingQueue = _dbManager.GetWaitingQueue(equipment.Id)
-                };
-
-                subject.Attach(new QueueUpdateObserver(_dbManager));
-                _subjects.Add(equipment.Id, subject);
-            }
         }
 
         public static ReservationObserverManager GetInstance()
@@ -46,6 +32,25 @@ namespace sql.Models
         public ReservationSubject GetSubject(byte equipmentId)
         {
             _subjects.TryGetValue(equipmentId, out var subject);
+            return subject ?? GetOrCreateSubject(equipmentId);
+        }
+
+        // 這一輪讓 ObserverManager 只負責「保存與提供 subject」，
+        // 不再自己建立 DBmanager 去查資料。
+        // 這樣設備狀態資料由外部提供，責任會更單純。
+        public ReservationSubject GetOrCreateSubject(byte equipmentId)
+        {
+            if (_subjects.TryGetValue(equipmentId, out var subject))
+            {
+                return subject;
+            }
+
+            subject = new ReservationSubject
+            {
+                EquipmentId = equipmentId
+            };
+            subject.Attach(new QueueUpdateObserver());
+            _subjects[equipmentId] = subject;
             return subject;
         }
     }

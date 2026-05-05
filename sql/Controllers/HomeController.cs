@@ -1,102 +1,191 @@
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+ï»¿using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using sql.Models;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Data.SqlClient;
+using sql.Services;
 
 namespace sql.Controllers
 {
-    public class HomeController : Controller
+    public class HomeController : AppControllerBase
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly AccountService _accountService;
+        private readonly AdminActionLogService _adminActionLogService;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(
+            ILogger<HomeController> logger,
+            AccountService accountService,
+            AdminActionLogService adminActionLogService,
+            CurrentUserService currentUserService)
+            : base(currentUserService)
         {
             _logger = logger;
+            _accountService = accountService;
+            _adminActionLogService = adminActionLogService;
         }
 
-        public IActionResult Index()
+        public IActionResult Index([FromQuery] AccountManagementFilter filter)
         {
-            DBmanager dbmanager = new DBmanager();
-            List<account> accounts = dbmanager.getAccounts();
-            ViewBag.accounts = accounts;
-            return View();
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var currentUser = GetCurrentUserInfo();
+
+            // å¸³è™Ÿåˆ—è¡¨ç¾åœ¨æ”¹æˆèµ° AccountServiceï¼Œ
+            // é€™æ¨£ Controller å°±ä¸éœ€è¦è‡ªå·± new DBmanagerã€‚
+            var viewModel = new AccountManagementPageViewModel
+            {
+                Filter = filter,
+                QueryResult = _accountService.GetAccounts(filter),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            };
+
+            return View(viewModel);
+        }
+
+        public IActionResult AdminActionLogs([FromQuery] AdminActionLogFilter filter)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var currentUser = GetCurrentUserInfo();
+
+            var viewModel = new AdminActionLogPageViewModel
+            {
+                Filter = filter,
+                ActionTypeOptions = AdminActionLogDisplayHelper.GetActionTypeOptions(),
+                TargetTypeOptions = AdminActionLogDisplayHelper.GetTargetTypeOptions(),
+                QueryResult = _adminActionLogService.GetLogs(filter),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            };
+
+            return View(viewModel);
+        }
+
+        public IActionResult ExportAdminActionLogs([FromQuery] AdminActionLogFilter filter)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _adminActionLogService.ExportLogsAsCsv(filter);
+            var fileName = $"admin-action-logs-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
         }
 
         [HttpPost]
-        public JsonResult UpdateAccount(int id, string password, string email, string phone)
+        public JsonResult UpdateAccount(UpdateAccountFormViewModel form)
         {
-            try
+            if (EnsureManagerRedirect() != null)
             {
-                Console.WriteLine($"±µ¦¬¨ì§ó·s½Ğ¨D - ID: {id}, Password: {password}, Email: {email}, Phone: {phone}");
-
-                // ÅçÃÒ¥²­nÄæ¦ì
-                if (string.IsNullOrEmpty(password))
-                {
-                    return Json(new { success = false, message = "±K½X¤£¯à¬°ªÅ" });
-                }
-
-                // ³Ğ«Ø±b¸¹ª«¥ó
-                var updatedUser = new account
-                {
-                    id = id,
-                    password = password,
-                    email = email,
-                    phone = phone
-                };
-
-                // ©I¥s DBManager ªº§ó·s¤èªk
-                DBmanager dbmanager = new DBmanager();
-                dbmanager.updateAccount(updatedUser);
-
-                Console.WriteLine("§ó·s¦¨¥\");
-                return Json(new { success = true, message = "§ó·s¦¨¥\" });
+                return Json(ApiResponseFactory.OperationFailure("æ‚¨æ²’æœ‰ç®¡ç†å“¡æ¬Šé™"));
             }
-            catch (SqlException sqlEx)
+
+            if (!ModelState.IsValid)
             {
-                Console.WriteLine($"SQL ¿ù»~: {sqlEx.Message}, ¿ù»~¥N½X: {sqlEx.Number}");
-                return Json(new
-                {
-                    success = false,
-                    message = $"¸ê®Æ®w¿ù»~: {sqlEx.Message}",
-                    errorCode = sqlEx.Number
-                });
+                return Json(ApiResponseFactory.OperationFailure("è«‹ç¢ºèªæ›´æ–°æ¬„ä½æ˜¯å¦å¡«å¯«æ­£ç¢º"));
             }
-            catch (Exception ex)
+
+            Console.WriteLine($"æ¥æ”¶åˆ°æ›´æ–°è«‹æ±‚ - ID: {form.Id}, Password: {form.Password}, Email: {form.Email}, Phone: {form.Phone}");
+
+            var updatedUser = new account
             {
-                Console.WriteLine($"¤@¯ë¿ù»~: {ex.Message}");
-                return Json(new
-                {
-                    success = false,
-                    message = $"§ó·s¥¢±Ñ: {ex.Message}",
-                    stackTrace = ex.StackTrace
-                });
-            }
+                id = form.Id,
+                password = form.Password,
+                email = form.Email,
+                phone = form.Phone
+            };
+
+            var result = _accountService.UpdateAccount(updatedUser);
+            return Json(result);
         }
 
         public IActionResult addAccount()
         {
-            return View();
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            return View(new AddAccountFormViewModel());
         }
 
         [HttpPost]
-        public IActionResult addAccount(account user)
+        public JsonResult CreateAccountModal(AddAccountFormViewModel form)
         {
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("æ‚¨æ²’æœ‰ç®¡ç†å“¡æ¬Šé™"));
+            }
 
-            DBmanager dbmanager = new DBmanager();
-            try
+            if (!ModelState.IsValid)
             {
-                dbmanager.newAccount(user);
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "è«‹ç¢ºèªå¸³è™Ÿè³‡æ–™æ˜¯å¦å¡«å¯«æ­£ç¢º"));
             }
-            catch (Exception e)
+
+            var user = new account
             {
-                Console.WriteLine(e.ToString());
+                userName = form.UserName,
+                password = form.Password,
+                age = form.Age,
+                email = form.Email,
+                phone = form.Phone
+            };
+
+            var created = _accountService.CreateAccount(user);
+            return Json(created
+                ? ApiResponseFactory.OperationSuccess("æ–°å¢å¸³è™ŸæˆåŠŸ")
+                : ApiResponseFactory.OperationFailure("æ–°å¢å¸³è™Ÿå¤±æ•—"));
+        }
+
+        [HttpPost]
+        public IActionResult addAccount(AddAccountFormViewModel form)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
             }
+
+            if (!ModelState.IsValid)
+            {
+                form.ErrorMessage = "è«‹ç¢ºèªè¡¨å–®æ¬„ä½æ˜¯å¦å¡«å¯«æ­£ç¢º";
+                return View(form);
+            }
+
+            // å»ºç«‹å¸³è™Ÿä¹Ÿæ”¹æˆèµ° AccountServiceï¼Œ
+            // å¾Œé¢å¦‚æœè¦è£œ email é©—è­‰æˆ–é è¨­è§’è‰²è¦å‰‡ï¼Œå°±æœ‰å›ºå®šå…¥å£å¯ä»¥åŠ ã€‚
+            var user = new account
+            {
+                userName = form.UserName,
+                password = form.Password,
+                age = form.Age,
+                email = form.Email,
+                phone = form.Phone
+            };
+
+            var created = _accountService.CreateAccount(user);
+            if (!created)
+            {
+                form.ErrorMessage = "æ–°å¢å¸³è™Ÿå¤±æ•—";
+                return View(form);
+            }
+
             return RedirectToAction("Login", "Account");
         }
 
@@ -104,8 +193,6 @@ namespace sql.Controllers
         {
             return View();
         }
-
-
 
         [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
         public IActionResult Error()

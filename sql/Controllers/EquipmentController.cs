@@ -1,237 +1,605 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using sql.Models;
+using sql.Services;
 using System.Diagnostics;
 
 namespace sql.Controllers
 {
-    public class EquipmentController : Controller
+    // EquipmentController 是設備、預約、排隊相關的主要入口。
+    // 這次重構的重點之一，是把設備操作也收斂到 EquipmentService，
+    // 讓 Controller 更專心處理請求與回應。
+    public class EquipmentController : AppControllerBase
     {
         private readonly ILogger<EquipmentController> _logger;
-        private readonly DBmanager _dbManager;
+        private readonly EquipmentService _equipmentService;
+        private readonly ReservationService _reservationService;
+        private readonly QueueService _queueService;
+        private readonly FutureReservationPlanningService _futureReservationPlanningService;
+        private readonly CurrentUserService _currentUserService;
 
-        public EquipmentController(ILogger<EquipmentController> logger)
+        public EquipmentController(
+            ILogger<EquipmentController> logger,
+            EquipmentService equipmentService,
+            ReservationService reservationService,
+            QueueService queueService,
+            FutureReservationPlanningService futureReservationPlanningService,
+            CurrentUserService currentUserService)
+            : base(currentUserService)
         {
             _logger = logger;
-            _dbManager = new DBmanager();
+            _equipmentService = equipmentService;
+            _reservationService = reservationService;
+            _queueService = queueService;
+            _futureReservationPlanningService = futureReservationPlanningService;
+            _currentUserService = currentUserService;
         }
+
         public IActionResult Index()
         {
-            // 檢查是否已登入
-            var currentUser = GetCurrentUserId();
-            if (currentUser == null)
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
             {
-                return RedirectToAction("Login", "Account");
+                return accessRedirect;
             }
 
-            // 檢查是否為管理者
-            if (!IsCurrentUserManager())
+            var currentUser = GetCurrentUserInfo();
+
+            var viewModel = new EquipmentManagementPageViewModel
             {
-                // 如果不是管理者，跳轉到預約頁面
-                TempData["Error"] = "您沒有管理員權限";
-                return RedirectToAction("Reservation", "Equipment");
-            }
-            var equipments = _dbManager.getEquipment();
-            ViewBag.equipments = equipments;
-            return View();
+                Equipments = _equipmentService.GetAllEquipments(),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            };
+
+            return View(viewModel);
         }
 
-        // 輔助方法：檢查是否為管理者
-        private bool IsCurrentUserManager()
+        public IActionResult ReservationDashboard([FromQuery] ReservationDashboardFilter filter)
         {
-            var userRole = HttpContext.Session.GetString("UserRole");
-            return userRole == "manager" || userRole == "admin";
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var currentUser = GetCurrentUserInfo();
+
+            var viewModel = new ReservationManagementPageViewModel
+            {
+                Filter = filter,
+                ScheduledStatusOptions = ReservationDashboardFilterOptions.GetScheduledStatusOptions(),
+                WaitingQueueTypeOptions = ReservationDashboardFilterOptions.GetWaitingQueueTypeOptions(),
+                Dashboard = _reservationService.GetReservationDashboard(filter),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            };
+
+            return View(viewModel);
+        }
+
+        public IActionResult ExportReservationDashboard([FromQuery] ReservationDashboardFilter filter)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _reservationService.ExportReservationDashboardAsCsv(filter);
+            var fileName = $"reservation-dashboard-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
+        }
+
+        [HttpGet]
+        public JsonResult GetEquipmentReservationChain(byte equipmentId)
+        {
+            try
+            {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.DataFailure<EquipmentReservationChainResponse>("您沒有管理員權限"));
+                }
+
+                var chain = _reservationService.GetEquipmentReservationChain(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(chain));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "取得設備 {EquipmentId} 預約鏈資訊時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<EquipmentReservationChainResponse>(
+                    ApiExceptionTranslator.ToUserMessage(ex, ex.Message)));
+            }
+        }
+
+        public IActionResult ExportEquipmentReservationChain(byte equipmentId)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            var fileBytes = _reservationService.ExportEquipmentReservationChainAsCsv(equipmentId);
+            var fileName = $"equipment-chain-{equipmentId}-{DateTime.Now:yyyyMMdd-HHmmss}.csv";
+            return File(fileBytes, "text/csv; charset=utf-8", fileName);
         }
 
         public IActionResult addEquipment()
         {
-            return View();
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            return View(new AddEquipmentFormViewModel());
         }
 
         [HttpPost]
-        public IActionResult addEquipment(Equipment user)
+        public JsonResult CreateEquipmentModal(AddEquipmentFormViewModel form)
         {
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+            }
 
-            DBmanager dbmanager = new DBmanager();
+            if (!ModelState.IsValid)
+            {
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認設備資料是否填寫正確"));
+            }
+
             try
             {
-                dbmanager.newEquipment(user);
+                var equipment = new Equipment
+                {
+                    equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
+                    MaxUsers = form.MaxUsers,
+                    AvailableTime = form.AvailableTime,
+                    OpenTime = form.OpenTime,
+                    CloseTime = form.CloseTime
+                };
+
+                _equipmentService.CreateEquipment(equipment);
+                return Json(ApiResponseFactory.OperationSuccess("新增設備成功"));
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return RedirectToAction("Privacy");
+                _logger.LogError(ex, "透過彈窗新增設備時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure("新增設備失敗，請稍後再試"));
             }
+        }
+
+        // 設備新增這裡改成走 EquipmentService，
+        // 代表 Controller 已經不直接碰資料層。
+        [HttpPost]
+        public IActionResult addEquipment(AddEquipmentFormViewModel form)
+        {
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            if (!ModelState.IsValid)
+            {
+                form.ErrorMessage = "請確認設備資料是否填寫正確";
+                return View(form);
+            }
+
+            try
+            {
+                var equipment = new Equipment
+                {
+                    equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
+                    MaxUsers = form.MaxUsers,
+                    AvailableTime = form.AvailableTime,
+                    OpenTime = form.OpenTime,
+                    CloseTime = form.CloseTime
+                };
+
+                _equipmentService.CreateEquipment(equipment);
+            }
+            catch
+            {
+                form.ErrorMessage = "新增設備失敗";
+                return View(form);
+            }
+
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult deleteEquipment(byte id)
+        public IActionResult deleteEquipment(DeleteEquipmentFormViewModel form)
         {
-            DBmanager dbmanager = new DBmanager();
+            var accessRedirect = EnsureManagerRedirect();
+            if (accessRedirect != null)
+            {
+                return accessRedirect;
+            }
+
+            if (!ModelState.IsValid)
+            {
+                TempData["Error"] = "刪除設備失敗：缺少設備編號";
+                return RedirectToAction("Index");
+            }
+
             try
             {
-                dbmanager.deleteEquipment(id);
+                _equipmentService.DeleteEquipment(form.Id);
             }
-            catch (Exception e)
+            catch
             {
                 return RedirectToAction("Privacy");
             }
+
             return RedirectToAction("Index");
         }
 
         [HttpPost]
-        public IActionResult UpdateEquipment(Equipment equipment)
+        public IActionResult UpdateEquipment(UpdateEquipmentFormViewModel form)
         {
-            DBmanager dbmanager = new DBmanager();
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+            }
+
+            if (!ModelState.IsValid)
+            {
+                // 這裡多做一層後備解析，原因是設備管理頁是行內編輯，
+                // 使用者有時只改一個欄位，但舊資料列的其他值可能不完全符合新的驗證規則。
+                // 如果直接用 ModelState 擋掉，前端看起來會像是「設備種類改不了」。
+                if (!TryBuildEquipmentFromRequest(out var fallbackEquipment, out var fallbackError))
+                {
+                    var firstError = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+
+                    return Json(ApiResponseFactory.OperationFailure(
+                        fallbackError ?? firstError ?? "請確認設備欄位是否填寫正確"));
+                }
+
+                try
+                {
+                    _equipmentService.UpdateEquipment(fallbackEquipment);
+                    return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "使用後備解析更新設備 {EquipmentId} 時發生錯誤", fallbackEquipment.Id);
+                    return Json(ApiResponseFactory.OperationFailure("更新設備時發生錯誤，請稍後再試"));
+                }
+            }
+
             try
             {
-                dbmanager.updateEquipment(equipment);
-                return Json(new { success = true });
+                var equipment = new Equipment
+                {
+                    Id = form.Id,
+                    equipmentName = form.EquipmentName,
+                    EquipmentCategory = form.EquipmentCategory,
+                    MaxUsers = form.MaxUsers,
+                    AvailableTime = form.AvailableTime,
+                    OpenTime = form.OpenTime,
+                    CloseTime = form.CloseTime
+                };
+
+                _equipmentService.UpdateEquipment(equipment);
+                return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                return RedirectToAction("Privacy");
+                _logger.LogError(ex, "更新設備 {EquipmentId} 時發生錯誤", form.Id);
+                return Json(ApiResponseFactory.OperationFailure("更新設備時發生錯誤，請稍後再試"));
             }
         }
 
-        // 預約設備 // 修改預約相關的 Action 方法，使用 Session 中的用戶資訊
+        private bool TryBuildEquipmentFromRequest(out Equipment equipment, out string? errorMessage)
+        {
+            equipment = new Equipment();
+            errorMessage = null;
+
+            var idValue = Request.Form["Id"].ToString();
+            if (!byte.TryParse(idValue, out var equipmentId))
+            {
+                errorMessage = "設備編號格式錯誤";
+                return false;
+            }
+
+            var equipmentName = Request.Form["EquipmentName"].ToString().Trim();
+            if (string.IsNullOrWhiteSpace(equipmentName))
+            {
+                errorMessage = "請輸入設備名稱";
+                return false;
+            }
+
+            var equipmentCategory = Request.Form["EquipmentCategory"].ToString().Trim();
+            if (string.IsNullOrWhiteSpace(equipmentCategory))
+            {
+                errorMessage = "請選擇設備種類";
+                return false;
+            }
+
+            var maxUsersValue = Request.Form["MaxUsers"].ToString();
+            if (!byte.TryParse(maxUsersValue, out var maxUsers) || maxUsers == 0)
+            {
+                errorMessage = "同時上限人數必須介於 1 到 255";
+                return false;
+            }
+
+            var availableTimeValue = Request.Form["AvailableTime"].ToString();
+            if (!short.TryParse(availableTimeValue, out var availableTime) || availableTime < 0 || availableTime > 1440)
+            {
+                errorMessage = "可使用時間必須介於 0 到 1440 分鐘";
+                return false;
+            }
+
+            var openTimeValue = Request.Form["OpenTime"].ToString();
+            if (!TimeSpan.TryParse(openTimeValue, out var openTime))
+            {
+                errorMessage = "開放時間格式錯誤";
+                return false;
+            }
+
+            var closeTimeValue = Request.Form["CloseTime"].ToString();
+            if (!TimeSpan.TryParse(closeTimeValue, out var closeTime))
+            {
+                errorMessage = "關閉時間格式錯誤";
+                return false;
+            }
+
+            equipment = new Equipment
+            {
+                Id = equipmentId,
+                equipmentName = equipmentName,
+                EquipmentCategory = equipmentCategory,
+                MaxUsers = maxUsers,
+                AvailableTime = availableTime,
+                OpenTime = openTime,
+                CloseTime = closeTime
+            };
+
+            return true;
+        }
+
+        // 預約按鈕按下後，Controller 只做三件事：
+        // 1. 取得目前使用者
+        // 2. 呼叫 Service
+        // 3. 把結果回給前端
         [HttpPost]
         public JsonResult MakeReservation(byte equipmentId)
         {
             try
             {
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
-                {
-                    return Json(new ReservationResult
-                    {
-                        Success = false,
-                        Message = "請先登入系統"
-                    });
-                }
-
-                var result = _dbManager.CreateReservation(equipmentId, currentUser);
+                var currentUser = _currentUserService.GetCurrentUser();
+                var result = _reservationService.MakeReservation(equipmentId, currentUser);
                 return Json(result);
             }
             catch (Exception e)
             {
-                // 過濾掉敏感信息，只顯示用戶友好的錯誤訊息
-                var userFriendlyMessage = GetUserFriendlyErrorMessage(e);
+                _logger.LogError(e, "處理設備預約時發生未預期錯誤");
                 return Json(new ReservationResult
                 {
                     Success = false,
-                    Message = userFriendlyMessage
+                    Message = ApiExceptionTranslator.ToUserMessage(e)
                 });
             }
         }
 
-        // 添加友好的錯誤訊息處理方法
-        private string GetUserFriendlyErrorMessage(Exception e)
+        // 這個入口專門處理未來時段預約。
+        // 和立即預約分開後，之後要補排隊轉換規則會比較安全。
+        [HttpPost]
+        public JsonResult CreateFutureReservation(FutureReservationRequestViewModel form)
         {
-            // 根據異常類型返回用戶友好的訊息
-            if (e.Message.Contains("開放時間"))
-                return e.Message; // 直接顯示業務邏輯錯誤
-
-            if (e.Message.Contains("連接"))
-                return "系統暫時無法處理您的請求，請稍後再試";
-
-            if (e.Message.Contains("超時"))
-                return "請求超時，請檢查網路連接";
-
-            // 其他未知錯誤
-            return "系統發生錯誤，請聯繫管理員";
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                var result = _reservationService.CreateFutureReservation(form, currentUser);
+                return Json(result);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "建立未來時段預約時發生未預期錯誤");
+                return Json(new ReservationResult
+                {
+                    Success = false,
+                    Message = ApiExceptionTranslator.ToUserMessage(e)
+                });
+            }
         }
 
-        // 取消預約
         [HttpPost]
         public JsonResult CancelReservation(int reservationId)
         {
             try
             {
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
                 {
-                    return Json(new { success = false, message = "請先登入系統" });
+                    return Json(ApiResponseFactory.OperationFailure("請先登入系統"));
                 }
 
-                var success = _dbManager.CancelReservation(reservationId, currentUser);
-                return Json(new { success = success, message = success ? "取消成功" : "取消失敗" });
+                var success = _reservationService.CancelReservation(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("取消成功")
+                    : ApiResponseFactory.OperationFailure("取消失敗"));
             }
             catch (Exception e)
             {
-                var userFriendlyMessage = GetUserFriendlyErrorMessage(e);
-                return Json(new { success = false, message = userFriendlyMessage });
+                _logger.LogError(e, "取消預約時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e)));
             }
         }
 
-        // 結束使用
         [HttpPost]
         public JsonResult EndUsage(int reservationId)
         {
             try
             {
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
                 {
-                    return Json(new { success = false, message = "請先登入" });
+                    return Json(ApiResponseFactory.OperationFailure("請先登入"));
                 }
 
-                Console.WriteLine($"=== 結束使用請求 ===");
-                Console.WriteLine($"預約ID: {reservationId}");
-                Console.WriteLine($"用戶: {currentUser}");
-
-                var success = _dbManager.EndUsage(reservationId, currentUser);
-
-                Console.WriteLine($"結束使用結果: {success}");
-
-                return Json(new
-                {
-                    success = success,
-                    message = success ? "結束使用成功" : "結束使用失敗，請檢查預約狀態"
-                });
+                var success = _reservationService.EndUsage(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("結束使用成功")
+                    : ApiResponseFactory.OperationFailure("結束使用失敗，請檢查預約狀態"));
             }
             catch (Exception e)
             {
-                Console.WriteLine($"結束使用錯誤: {e}");
-                return Json(new
+                _logger.LogError(e, "結束設備使用時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure("結束使用失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ForceEndUsage(int reservationId)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
                 {
-                    success = false,
-                    message = "結束使用失敗: " + e.Message
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _reservationService.ForceEndUsage(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者強制結束使用")
+                    : ApiResponseFactory.OperationFailure("強制結束失敗，請確認該預約是否仍在使用中"));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者強制結束使用時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ForceCancelScheduledReservation(int reservationId)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _reservationService.ForceCancelScheduledReservation(reservationId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者取消未來預約")
+                    : ApiResponseFactory.OperationFailure("取消失敗，請確認該預約是否尚未開始"));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者取消未來預約時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
+        [HttpPost]
+        public JsonResult ForceRescheduleScheduledReservation(AdminRescheduleReservationFormViewModel form)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "您沒有管理員權限"
+                    });
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "請確認新的日期與時段是否填寫完整"
+                    });
+                }
+
+                var result = _reservationService.ForceRescheduleScheduledReservation(form, currentUser);
+                return Json(result);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "管理者調整未來預約時段時發生錯誤");
+                return Json(new ReservationResult
+                {
+                    Success = false,
+                    Message = ApiExceptionTranslator.ToUserMessage(e, e.Message)
                 });
             }
         }
+
+        [HttpGet]
+        public JsonResult PreviewRescheduleScheduledReservation(
+            int reservationId,
+            string reservationDate,
+            string selectedSlotStartTime)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                var preview = _reservationService.PreviewRescheduleScheduledReservation(
+                    new AdminRescheduleReservationFormViewModel
+                    {
+                        ReservationId = reservationId,
+                        ReservationDate = reservationDate,
+                        SelectedSlotStartTime = selectedSlotStartTime
+                    },
+                    currentUser);
+
+                return Json(ApiResponseFactory.DataSuccess(preview));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "預覽管理者調整未來預約時段影響時發生錯誤");
+                return Json(ApiResponseFactory.DataFailure<ReservationAdjustmentPreviewResponse>(
+                    ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
         [HttpPost]
         public JsonResult ProcessAllQueues()
         {
             try
             {
-                // 替代方案：循環處理所有設備的排隊
-                var equipments = _dbManager.getEquipment();
-                foreach (var equipment in equipments)
-                {
-                    _dbManager.ProcessWaitingQueue(equipment.Id);
-                }
-
-                return Json(new { success = true, message = "已處理所有排隊隊列" });
+                _queueService.ProcessAllQueues();
+                return Json(ApiResponseFactory.OperationSuccess("已處理所有排隊隊列"));
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "處理所有排隊隊列時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(ex, ex.Message)));
             }
         }
-        
 
         [HttpPost]
         public JsonResult ProcessEquipmentQueue(byte equipmentId)
         {
-            
             try
             {
-                _dbManager.ProcessWaitingQueue(equipmentId);
-                return Json(new { success = true, message = "已處理設備排隊隊列" });
+                _queueService.ProcessEquipmentQueue(equipmentId);
+                return Json(ApiResponseFactory.OperationSuccess("已處理設備排隊隊列"));
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "處理設備 {EquipmentId} 排隊隊列時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(ex, ex.Message)));
             }
         }
 
@@ -240,261 +608,203 @@ namespace sql.Controllers
         {
             try
             {
-                // 替代方案：手動構建調試信息
-                var equipment = _dbManager.GetEquipmentById(equipmentId);
-                var currentUsers = _dbManager.GetCurrentUsers(equipmentId);
-                var waitingList = _dbManager.GetWaitingQueue(equipmentId);
-
-                var debugInfo = new
-                {
-                    Equipment = equipment?.equipmentName,
-                    CurrentUsers = currentUsers,
-                    MaxUsers = equipment?.MaxUsers ?? 0,
-                    QueueCount = waitingList.Count,
-                    HasVacancy = currentUsers < (equipment?.MaxUsers ?? 0),
-                    WaitingUsers = waitingList.Select(q => new { q.UserId, q.Position })
-                };
-
-                return Json(new { success = true, data = debugInfo });
+                var debugInfo = _queueService.GetQueueDebugInfo(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(debugInfo));
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = ex.Message });
+                _logger.LogError(ex, "取得設備 {EquipmentId} 排隊偵錯資訊時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<QueueDebugInfoResponse>(ex.Message));
             }
         }
 
-        
-
-        // 檢查設備可用性
         [HttpGet]
         public IActionResult CheckAvailability(byte equipmentId)
         {
             try
             {
-                var equipment = _dbManager.GetEquipmentById(equipmentId);
-                if (equipment == null)
+                var result = _equipmentService.CheckAvailability(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(new AvailabilitySummaryResponse
                 {
-                    return Json(new { isAvailable = false, message = "設備不存在" });
-                }
-
-                var currentTime = DateTime.Now.TimeOfDay;
-                var isInOperatingHours = currentTime >= equipment.OpenTime && currentTime <= equipment.CloseTime;
-                var currentUsers = _dbManager.GetCurrentUsers(equipmentId);
-                var isWithinCapacity = currentUsers < equipment.MaxUsers;
-
-                return Json(new
-                {
-                    isAvailable = isInOperatingHours && isWithinCapacity,
-                    message = isInOperatingHours ?
-                             (isWithinCapacity ? "可預約" : "設備已滿") :
-                             "非開放時間"
-                });
+                    IsAvailable = result.IsAvailable,
+                    Message = result.Message
+                }));
             }
             catch (Exception e)
             {
-                return Json(new { isAvailable = false, message = "檢查失敗: " + e.Message });
+                _logger.LogError(e, "檢查設備 {EquipmentId} 可用性時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure(
+                    "檢查失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message),
+                    new AvailabilitySummaryResponse
+                    {
+                        IsAvailable = false,
+                        Message = "檢查失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message)
+                    }));
             }
         }
 
-        // 添加台灣時間輔助方法
-        private DateTime GetTaiwanTime()
-        {
-            try
-            {
-                var taiwanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-                return TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, taiwanTimeZone);
-            }
-            catch
-            {
-                return DateTime.UtcNow.AddHours(8);
-            }
-        }
-
-        // 獲取排隊信息
         [HttpGet]
         public JsonResult GetQueueInfo(byte equipmentId)
         {
             try
             {
-                var queue = _dbManager.GetWaitingQueue(equipmentId);
-                var currentUsers = _dbManager.GetCurrentUsers(equipmentId);
-                var equipment = _dbManager.GetEquipmentById(equipmentId);
-
-                return Json(new
-                {
-                    waitingCount = queue.Count,
-                    currentUsers = currentUsers,
-                    maxUsers = equipment?.MaxUsers ?? 0,
-                    queueList = queue.Select(q => new
-                    {
-                        userId = q.UserId,
-                        position = q.Position,
-                        queueTime = q.QueueTime
-                    })
-                });
+                var queueInfo = _queueService.GetQueueInfo(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(queueInfo));
             }
             catch (Exception e)
             {
-                return Json(new { error = e.Message });
+                _logger.LogError(e, "取得設備 {EquipmentId} 排隊資訊時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<QueueInfoResponse>(e.Message));
             }
         }
 
-        // API Action - 返回 JsonResult（供前端 JavaScript 調用）
         [HttpGet]
         public JsonResult GetCurrentUser()
         {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            var userName = HttpContext.Session.GetString("UserName");
-
-            if (userId == null || string.IsNullOrEmpty(userName))
+            var currentUser = _currentUserService.GetCurrentUser();
+            if (!currentUser.IsAuthenticated)
             {
-                return Json(new { isLoggedIn = false });
+                return Json(new CurrentUserResponse
+                {
+                    IsLoggedIn = false
+                });
             }
 
-            return Json(new
+            return Json(new CurrentUserResponse
             {
-                isLoggedIn = true,
-                userId = userId,
-                userName = userName
+                IsLoggedIn = true,
+                UserId = currentUser.UserId,
+                UserName = currentUser.UserName,
+                Role = currentUser.Role,
+                IsManager = currentUser.IsManager
             });
         }
 
-        // 添加登入檢查的輔助方法
-        private string GetCurrentUserId()
-        {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            var userName = HttpContext.Session.GetString("UserName");
-
-            if (userId == null || string.IsNullOrEmpty(userName))
-            {
-                return null;
-            }
-
-            return userName; // 返回用戶名作為字符串
-        }
-
-        // 預約頁面
         public IActionResult Reservation()
         {
-            var currentUser = GetCurrentUserId();
-            if (currentUser == null)
+            var accessRedirect = EnsureAuthenticatedRedirect();
+            if (accessRedirect != null)
             {
-                return RedirectToAction("Login", "Account");
+                return accessRedirect;
             }
-            var equipments = _dbManager.getEquipment();
-            ViewBag.equipments = equipments;
-            return View(equipments);
+
+            var currentUser = GetCurrentUserInfo();
+
+            var viewModel = new EquipmentReservationPageViewModel
+            {
+                Equipments = _equipmentService.GetAllEquipments(),
+                SlotIntervalMinutes = _futureReservationPlanningService.GetSlotIntervalMinutes(),
+                AdvanceReservationDays = _futureReservationPlanningService.GetAdvanceReservationDays(),
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            };
+
+            return View(viewModel);
         }
 
-        // 我的預約頁面
+        // 第二階段的未來預約先從這個規劃入口開始。
+        // 建立流程會另外走 CreateFutureReservation，避免查詢和寫入混在一起。
+        [HttpGet]
+        public JsonResult GetFutureReservationPlanning(byte equipmentId, string? reservationDate)
+        {
+            try
+            {
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
+                {
+                    return Json(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>("請先登入"));
+                }
+
+                DateOnly? parsedDate = null;
+                if (!string.IsNullOrWhiteSpace(reservationDate)
+                    && DateOnly.TryParse(reservationDate, out var date))
+                {
+                    parsedDate = date;
+                }
+
+                var planning = _futureReservationPlanningService.BuildPlanning(equipmentId, parsedDate);
+                return Json(ApiResponseFactory.DataSuccess(planning));
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "取得設備 {EquipmentId} 未來預約規劃時發生錯誤", equipmentId);
+                return Json(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>(
+                    ApiExceptionTranslator.ToUserMessage(e, e.Message)));
+            }
+        }
+
         public IActionResult MyReservations()
         {
-            var currentUser = GetCurrentUserId();
-            if (currentUser == null)
+            var accessRedirect = EnsureAuthenticatedRedirect();
+            if (accessRedirect != null)
             {
-                return RedirectToAction("Login", "Account");
+                return accessRedirect;
             }
 
-            return View();
+            var currentUser = GetCurrentUserInfo();
+            return View(new MyReservationsPageViewModel
+            {
+                CurrentUserName = currentUser.UserName,
+                IsManager = currentUser.IsManager
+            });
         }
 
-        // 獲取用戶的預約信息
+        // 「我的預約」頁面的主要資料來源。
+        // Controller 不直接查資料庫，而是交給 Service 整理成前端需要的格式。
         [HttpGet]
         public JsonResult GetMyReservations()
         {
             try
             {
-                // 替代方案：只處理相關設備的排隊，而不是全部
-                // 或者直接移除這行，因為排隊處理應該由其他機制觸發
-                // _dbManager.ProcessAllWaitingQueues();
-
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
                 {
-                    return Json(new { error = "請先登入" });
+                    return Json(ApiResponseFactory.DataFailure<UserReservationsResponse>("請先登入"));
                 }
 
-                var taiwanTime = GetTaiwanTime();
-
-                var activeReservations = _dbManager.GetActiveReservations(currentUser);
-                var waitingReservations = _dbManager.GetWaitingQueues(currentUser);
-                var historyReservations = _dbManager.GetHistoryReservations(currentUser);
-
-                // 修正：確保剩餘時間正確計算
-                var activeWithRemainingTime = activeReservations.Select(r =>
-                {
-                    var remainingTime = CalculateRemainingTimeTaiwan(
-                        (DateTime)r["StartTime"],
-                        Convert.ToInt32(r["AvailableTime"])
-                    );
-
-                    return new Dictionary<string, object>
-                    {
-                        ["Id"] = r["Id"],
-                        ["EquipmentId"] = r["EquipmentId"],
-                        ["EquipmentName"] = r["EquipmentName"],
-                        ["UserId"] = r["UserId"],
-                        ["StartTime"] = r["StartTime"],
-                        ["AvailableTime"] = r["AvailableTime"],
-                        ["ReservationTime"] = r["ReservationTime"],
-                        ["Status"] = r["Status"],
-                        ["RemainingTime"] = remainingTime
-                    };
-                }).ToList();
-
-                var result = new
-                {
-                    activeReservations = activeWithRemainingTime,
-                    waitingReservations = waitingReservations,
-                    historyReservations = historyReservations,
-                    serverTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss")
-                };
-
-                return Json(result);
+                var result = _reservationService.GetUserReservations(currentUser);
+                return Json(ApiResponseFactory.DataSuccess(result));
             }
             catch (Exception e)
             {
-                Console.WriteLine($"GetMyReservations 錯誤: {e}");
-                return Json(new { error = e.Message });
+                _logger.LogError(e, "取得目前使用者預約資料時發生錯誤");
+                return Json(ApiResponseFactory.DataFailure<UserReservationsResponse>(e.Message));
             }
         }
-        
 
         [HttpGet]
         public JsonResult TestDataFormat()
         {
             try
             {
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
                 {
-                    return Json(new { error = "請先登入" });
+                    return Json(ApiResponseFactory.Error("請先登入"));
                 }
 
-                var activeReservations = _dbManager.GetActiveReservations(currentUser);
-                var waitingReservations = _dbManager.GetWaitingQueues(currentUser);
-                var historyReservations = _dbManager.GetHistoryReservations(currentUser);
+                var reservations = _reservationService.GetUserReservations(currentUser);
 
-                // 返回數據類型和格式信息
-                return Json(new
+                return Json(new ReservationDataFormatResponse
                 {
-                    activeReservationsCount = activeReservations.Count,
-                    waitingReservationsCount = waitingReservations.Count,
-                    historyReservationsCount = historyReservations.Count,
-                    sampleActive = activeReservations.FirstOrDefault(),
-                    sampleWaiting = waitingReservations.FirstOrDefault(),
-                    sampleHistory = historyReservations.FirstOrDefault(),
-                    dataTypes = new
+                    ActiveReservationsCount = reservations.ActiveReservations.Count,
+                    WaitingReservationsCount = reservations.WaitingReservations.Count,
+                    HistoryReservationsCount = reservations.HistoryReservations.Count,
+                    SampleActive = reservations.ActiveReservations.FirstOrDefault(),
+                    SampleWaiting = reservations.WaitingReservations.FirstOrDefault(),
+                    SampleHistory = reservations.HistoryReservations.FirstOrDefault(),
+                    DataTypes = new ReservationDataTypesInfo
                     {
-                        activeType = activeReservations.GetType().Name,
-                        waitingType = waitingReservations.GetType().Name,
-                        historyType = historyReservations.GetType().Name
+                        ActiveType = reservations.ActiveReservations.GetType().Name,
+                        WaitingType = reservations.WaitingReservations.GetType().Name,
+                        HistoryType = reservations.HistoryReservations.GetType().Name
                     }
                 });
             }
             catch (Exception e)
             {
-                return Json(new { error = e.Message, stackTrace = e.StackTrace });
+                _logger.LogError(e, "測試預約資料格式時發生錯誤");
+                return Json(ApiResponseFactory.Error(e.Message, e.StackTrace));
             }
         }
 
@@ -503,100 +813,23 @@ namespace sql.Controllers
         {
             try
             {
-                var equipment = _dbManager.GetEquipmentById(equipmentId);
-                if (equipment == null)
-                {
-                    return Json(new
-                    {
-                        isAvailable = false,
-                        message = "設備不存在",
-                        serverTime = GetTaiwanTime().ToString("yyyy-MM-dd HH:mm:ss")
-                    });
-                }
-
-                // 使用台灣時間檢查
-                DateTime taiwanTime = GetTaiwanTime();
-                TimeSpan currentTimeOfDay = taiwanTime.TimeOfDay;
-
-                bool isInOperatingHours = currentTimeOfDay >= equipment.OpenTime &&
-                                        currentTimeOfDay <= equipment.CloseTime;
-
-                var currentUsers = _dbManager.GetCurrentUsers(equipmentId);
-                bool isWithinCapacity = currentUsers < equipment.MaxUsers;
-
-                // 修改：即使人數已滿，按鈕也不禁用，而是進入排隊
-                bool isAvailable = isInOperatingHours;
-
-                string message;
-                if (!isInOperatingHours)
-                {
-                    message = $"非開放時間（台灣時間: {taiwanTime:HH:mm}，開放時間: {equipment.OpenTime:hh\\:mm}-{equipment.CloseTime:hh\\:mm}）";
-                }
-                else if (!isWithinCapacity)
-                {
-                    message = "設備已滿，點擊預約將加入排隊";
-                }
-                else
-                {
-                    message = "可預約";
-                }
-
-                return Json(new
-                {
-                    isAvailable = isAvailable,
-                    canReserve = isInOperatingHours, // 新增：是否可預約（包括排隊）
-                    isFull = !isWithinCapacity, // 新增：是否已滿
-                    message = message,
-                    currentUsers = currentUsers,
-                    maxUsers = equipment.MaxUsers,
-                    averageUsageTime = equipment.AvailableTime,
-                    serverTaiwanTime = taiwanTime.ToString("yyyy-MM-dd HH:mm:ss"),
-                    openTime = equipment.OpenTime.ToString(@"hh\:mm"),
-                    closeTime = equipment.CloseTime.ToString(@"hh\:mm")
-                });
+                var availability = _reservationService.CheckEquipmentAvailability(equipmentId);
+                return Json(ApiResponseFactory.DataSuccess(availability));
             }
             catch (Exception e)
             {
-                return Json(new
-                {
-                    isAvailable = false,
-                    canReserve = false,
-                    isFull = false,
-                    message = "檢查失敗: " + e.Message,
-                    serverTime = GetTaiwanTime().ToString("yyyy-MM-dd HH:mm:ss")
-                });
-            }
-        }
-        // 計算基於台灣時間的剩餘時間
-        private int CalculateRemainingTimeTaiwan(DateTime startTime, int availableTime)
-        {
-            try
-            {
-                var taiwanTime = GetTaiwanTime();
-
-                // 如果開始時間是 UTC，轉換為台灣時間
-                if (startTime.Kind == DateTimeKind.Utc)
-                {
-                    var taiwanTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Taipei");
-                    startTime = TimeZoneInfo.ConvertTimeFromUtc(startTime, taiwanTimeZone);
-                }
-
-                var elapsedMinutes = (int)(taiwanTime - startTime).TotalMinutes;
-                var remaining = availableTime - elapsedMinutes;
-
-                Console.WriteLine($"=== 剩餘時間計算 ===");
-                Console.WriteLine($"開始時間: {startTime:yyyy-MM-dd HH:mm:ss}");
-                Console.WriteLine($"台灣時間: {taiwanTime:yyyy-MM-dd HH:mm:ss}");
-                Console.WriteLine($"可用時間: {availableTime} 分鐘");
-                Console.WriteLine($"經過時間: {elapsedMinutes} 分鐘");
-                Console.WriteLine($"剩餘時間: {remaining} 分鐘");
-
-                return Math.Max(0, remaining);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"計算剩餘時間錯誤: {ex.Message}");
-                return 0;
+                _logger.LogError(e, "檢查設備 {EquipmentId} 預約可用性時發生錯誤", equipmentId);
+                var userMessage = ApiExceptionTranslator.ToUserMessage(e, e.Message);
+                return Json(ApiResponseFactory.DataFailure(
+                    "檢查失敗: " + userMessage,
+                    new EquipmentAvailabilityResponse
+                    {
+                        IsAvailable = false,
+                        CanReserve = false,
+                        IsFull = false,
+                        Message = "檢查失敗: " + userMessage,
+                        ServerTaiwanTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
+                    }));
             }
         }
 
@@ -605,60 +838,62 @@ namespace sql.Controllers
         {
             try
             {
-                _dbManager.AutoCompleteExpiredReservations();
-                return Json(new { success = true, message = "已手動清理過期預約" });
+                _reservationService.AutoCompleteExpiredReservations();
+                return Json(ApiResponseFactory.OperationSuccess("已手動清理過期預約"));
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, message = $"清理失敗: {ex.Message}" });
+                _logger.LogError(ex, "手動清理過期預約時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure($"清理失敗: {ApiExceptionTranslator.ToUserMessage(ex, ex.Message)}"));
             }
         }
 
-        // 取消排隊
         [HttpPost]
         public JsonResult CancelQueue(int queueId)
         {
             try
             {
-                var currentUser = GetCurrentUserId();
-                if (currentUser == null)
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
                 {
-                    return Json(new { success = false, message = "請先登入" });
+                    return Json(ApiResponseFactory.OperationFailure("請先登入"));
                 }
 
-                var success = _dbManager.CancelWaitingQueue(queueId, currentUser);
-                return Json(new { success = success, message = success ? "取消排隊成功" : "取消排隊失敗" });
+                var success = _queueService.CancelQueue(queueId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("取消排隊成功")
+                    : ApiResponseFactory.OperationFailure("取消排隊失敗"));
             }
             catch (Exception e)
             {
-                return Json(new { success = false, message = "取消排隊失敗: " + e.Message });
+                _logger.LogError(e, "取消排隊時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure("取消排隊失敗: " + ApiExceptionTranslator.ToUserMessage(e, e.Message)));
             }
         }
 
         [HttpPost]
-        public JsonResult TestEndUsage(int reservationId)
+        public JsonResult ForceCancelQueue(int queueId)
         {
             try
             {
-                Console.WriteLine($"測試結束使用 - 預約ID: {reservationId}");
-                return Json(new
+                var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
                 {
-                    success = true,
-                    message = "測試成功，預約ID: " + reservationId,
-                    timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")
-                });
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
+                var success = _queueService.ForceCancelQueue(queueId, currentUser);
+                return Json(success
+                    ? ApiResponseFactory.OperationSuccess("已由管理者移除排隊紀錄")
+                    : ApiResponseFactory.OperationFailure("移除排隊失敗，請確認該紀錄是否仍存在"));
             }
             catch (Exception e)
             {
-                return Json(new
-                {
-                    success = false,
-                    message = "測試失敗: " + e.Message
-                });
+                _logger.LogError(e, "管理者移除排隊時發生錯誤");
+                return Json(ApiResponseFactory.OperationFailure(ApiExceptionTranslator.ToUserMessage(e, e.Message)));
             }
         }
 
-        // 其他原有方法...
         public IActionResult Privacy()
         {
             return View();

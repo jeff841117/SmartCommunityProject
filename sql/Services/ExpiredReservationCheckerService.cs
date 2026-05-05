@@ -26,10 +26,10 @@ namespace sql.Services
                 {
                     using (var scope = _serviceProvider.CreateScope())
                     {
-                        var dbManager = scope.ServiceProvider.GetRequiredService<DBmanager>();
+                        var reservationService = scope.ServiceProvider.GetRequiredService<ReservationService>();
 
                         // 每分鐘檢查一次過期預約
-                        dbManager.AutoCompleteExpiredReservations();
+                        reservationService.AutoCompleteExpiredReservations();
                         _logger.LogInformation("已檢查過期預約");
                     }
                 }
@@ -46,3 +46,4 @@ namespace sql.Services
         }
     }
 }
+

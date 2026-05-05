@@ -1,81 +1,246 @@
-﻿@{
-    ViewData["Title"] = "註冊帳號";
-    List<account> accounts = ViewBag.accounts;
+@model sql.Models.AccountManagementPageViewModel
+@{
+    ViewData["Title"] = "帳戶管理系統";
+    Layout = "";
+    var accounts = Model.QueryResult.Items;
+    var searchFieldOptions = sql.Models.AccountManagementOptions.GetSearchFieldOptions();
+    var roleOptions = sql.Models.AccountManagementOptions.GetRoleOptions();
 }
-<link href="~/css/indexHome.css" rel="stylesheet" asp-append-version="true">
-<div class="header-section">
-    <div class="container">
-        <h1 class="display-4 fw-bold">帳戶管理系統</h1>
-        <p class="lead">管理所有用戶帳戶信息</p>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/portal-shell.css" rel="stylesheet" asp-append-version="true">
+    <link href="~/css/indexHome.css" rel="stylesheet" asp-append-version="true">
+</head>
+<body class="portal-body">
+    <div class="modal fade portal-modal" id="addAccountModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">新增帳號</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="addAccountForm">
+                    <div class="modal-body">
+                        <div id="addAccountError" class="alert alert-danger d-none" role="alert"></div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" for="addAccountUserName">帳號名稱</label>
+                                <input id="addAccountUserName" name="UserName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="addAccountPassword">帳號密碼</label>
+                                <input id="addAccountPassword" name="Password" type="password" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="addAccountAge">年齡</label>
+                                <input id="addAccountAge" name="Age" type="number" min="1" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="addAccountEmail">電子郵箱</label>
+                                <input id="addAccountEmail" name="Email" type="email" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="addAccountPhone">手機號碼</label>
+                                <input id="addAccountPhone" name="Phone" type="tel" class="form-control" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">新增帳號</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="container">
-    <div class="button-container">
-        <a href="/Home/addAccount" class="add-equipment-btn">新增帳號</a>
-    </div>
-    <div class="button-container">
-        <a href="/Equipment/addEquipment" class="add-equipment-btn">新增設備</a>
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="portal-brand">
+                <h1>智能社區系統</h1>
+                <p>帳戶管理後台</p>
+            </div>
+            <nav class="portal-nav">
+                <span class="portal-nav-title">管理功能</span>
+                <a class="portal-nav-link is-active" href="/Home/Index">帳戶管理</a>
+                <a class="portal-nav-link" href="/Equipment/Index">設備管理</a>
+                <a class="portal-nav-link" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
+                <a class="portal-nav-link" href="/Home/AdminActionLogs">管理者操作紀錄</a>
+
+                <div class="portal-nav-group">
+                    <span class="portal-nav-title">會員功能</span>
+                    <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
+                    <a class="portal-nav-link" href="/Equipment/MyReservations">我的預約</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="portal-main">
+            <div class="portal-topbar">
+                <div class="portal-topbar-title">
+                    <h1>帳戶管理系統</h1>
+                    <p>管理會員帳號資料，支援條件搜尋、精準搜尋與權限篩選。</p>
+                </div>
+                <div class="portal-user-panel">
+                    <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
+                    <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
+                </div>
+            </div>
+
+            <div class="portal-content">
+                <section class="portal-panel mb-4">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">查詢條件</h2>
+                            <p class="portal-section-subtitle">先選擇要搜尋的欄位，再決定是否精準搜尋。</p>
+                        </div>
+                        <div class="portal-toolbar">
+                            <button type="button" class="portal-btn portal-btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">新增帳號</button>
+                            <a href="/Home/AdminActionLogs" class="portal-btn portal-btn-outline">管理者操作紀錄</a>
+                        </div>
+                    </div>
+
+                    <form method="get" class="portal-grid three">
+                        <div>
+                            <label class="form-label" asp-for="Filter.SearchField">搜尋欄位</label>
+                            <select asp-for="Filter.SearchField" class="form-select">
+                                @foreach (var option in searchFieldOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" asp-for="Filter.Keyword">搜尋內容</label>
+                            <input asp-for="Filter.Keyword" class="form-control" placeholder="請輸入搜尋內容" />
+                        </div>
+                        <div>
+                            <label class="form-label" asp-for="Filter.Role">權限篩選</label>
+                            <select asp-for="Filter.Role" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in roleOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-end">
+                            <div class="form-check">
+                                <input asp-for="Filter.ExactMatch" class="form-check-input" />
+                                <label asp-for="Filter.ExactMatch" class="form-check-label">是否精準搜尋</label>
+                            </div>
+                        </div>
+                        <input asp-for="Filter.Page" type="hidden" value="1" />
+                        <div class="d-flex align-items-end gap-2">
+                            <button type="submit" class="portal-btn portal-btn-primary">開始搜尋</button>
+                            <a href="/Home/Index" class="portal-btn portal-btn-outline">清除條件</a>
+                        </div>
+                    </form>
+                </section>
+
+                <section class="portal-panel">
+                    <div class="portal-section-header">
+                        <div>
+                            <h2 class="portal-section-title">帳號列表</h2>
+                            <p class="portal-section-subtitle">
+                                共 <strong>@Model.QueryResult.TotalCount</strong> 筆，
+                                第 <strong>@Model.QueryResult.Page</strong> / <strong>@Math.Max(Model.QueryResult.TotalPages, 1)</strong> 頁。
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="portal-table-panel">
+                        <div class="portal-table-wrap">
+                            <table class="portal-table table table-hover table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>編號</th>
+                                        <th>帳號名稱</th>
+                                        <th>帳號密碼</th>
+                                        <th>年齡</th>
+                                        <th>電子郵箱</th>
+                                        <th>手機號碼</th>
+                                        <th>權限</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @if (accounts.Any())
+                                    {
+                                        @foreach (var user in accounts)
+                                        {
+                                            <tr id="row-@user.id">
+                                                <td>@user.id</td>
+                                                <td>@user.userName</td>
+                                                <td class="password-cell">
+                                                    <span class="password-text">@user.password</span>
+                                                    <input type="password" class="form-control form-control-sm password-input" value="@user.password" placeholder="帳號密碼" style="display:none;">
+                                                </td>
+                                                <td>@user.age</td>
+                                                <td class="email-cell">
+                                                    <span class="email-text">@user.email</span>
+                                                    <input type="email" class="form-control form-control-sm email-input" value="@user.email" placeholder="電子郵箱" style="display:none;">
+                                                </td>
+                                                <td class="phone-cell">
+                                                    <span class="phone-text">@user.phone</span>
+                                                    <input type="tel" class="form-control form-control-sm phone-input" value="@user.phone" placeholder="手機號碼" style="display:none;">
+                                                </td>
+                                                <td>@(user.role == "admin" ? "管理者" : "普通會員")</td>
+                                                <td>
+                                                    @if (user.role == "user")
+                                                    {
+                                                        <button class="btn btn-primary btn-sm edit-btn" data-id="@user.id">編輯</button>
+                                                        <button class="btn btn-success btn-sm save-btn" data-id="@user.id" style="display:none;">儲存</button>
+                                                        <button class="btn btn-secondary btn-sm cancel-btn" data-id="@user.id" style="display:none;">取消</button>
+                                                    }
+                                                </td>
+                                            </tr>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="8" class="text-center text-muted py-4">目前沒有符合條件的帳號資料。</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+                        <a class="portal-btn portal-btn-outline @(Model.QueryResult.HasPreviousPage ? "" : "disabled")"
+                           asp-action="Index"
+                           asp-route-SearchField="@Model.Filter.SearchField"
+                           asp-route-Keyword="@Model.Filter.Keyword"
+                           asp-route-ExactMatch="@Model.Filter.ExactMatch"
+                           asp-route-Role="@Model.Filter.Role"
+                           asp-route-Page="@(Model.QueryResult.Page - 1)"
+                           asp-route-PageSize="@Model.Filter.PageSize">上一頁</a>
+
+                        <span class="portal-form-note">目前第 @Model.QueryResult.Page / @Math.Max(Model.QueryResult.TotalPages, 1) 頁</span>
+
+                        <a class="portal-btn portal-btn-outline @(Model.QueryResult.HasNextPage ? "" : "disabled")"
+                           asp-action="Index"
+                           asp-route-SearchField="@Model.Filter.SearchField"
+                           asp-route-Keyword="@Model.Filter.Keyword"
+                           asp-route-ExactMatch="@Model.Filter.ExactMatch"
+                           asp-route-Role="@Model.Filter.Role"
+                           asp-route-Page="@(Model.QueryResult.Page + 1)"
+                           asp-route-PageSize="@Model.Filter.PageSize">下一頁</a>
+                    </div>
+                </section>
+            </div>
+        </main>
     </div>
 
-    <div class="table-container">
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>編號</th>
-                    <th>帳號</th>
-                    <th>密碼</th>
-                    <th>年齡</th>
-                    <th>電子郵件</th>
-                    <th>手機號碼</th>
-                    <th>權限</th>
-                    <th>操作</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (account user in accounts)
-                {
-                    <tr id="row-@user.id">
-                        <td>@user.id</td>
-                        <td>@user.userName</td>
-                        <td class="password-cell">
-                            <span class="password-text">@user.password</span>
-                            <input type="password" class="form-control form-control-sm password-input" value="@user.password" placeholder="新密碼" style="display:none;">
-                        </td>
-                        <td>@user.age</td>
-                        <td class="email-cell">
-                            <span class="email-text">@user.email</span>
-                            <input type="email" class="form-control form-control-sm email-input" value="@user.email" placeholder="電子郵件" style="display:none;">
-                        </td>
-                        <td class="phone-cell">
-                            <span class="phone-text">@user.phone</span>
-                            <input type="tel" class="form-control form-control-sm phone-input" value="@user.phone" placeholder="手機號碼" style="display:none;">
-                        </td>
-                        <td>@user.role</td>
-                        <td>
-                            @if (user.role == "user")
-                            {
-                                <button class="btn btn-primary btn-sm edit-btn" data-id="@user.id">編輯</button>
-                                <button class="btn btn-success btn-sm save-btn" data-id="@user.id" style="display:none;">儲存</button>
-                                <button class="btn btn-secondary btn-sm cancel-btn" data-id="@user.id" style="display:none;">取消</button>
-                            }
-                            else
-                            {
-                                @* <span class="text-muted">無法編輯</span> *@
-                            }
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    </div>
-</div>
-<script id="edit-template" type="text/template">
-    <input type="password" class="form-control form-control-sm password-input" value="{password}" placeholder="新密碼">
-    <input type="email" class="form-control form-control-sm email-input" value="{email}" placeholder="電子郵件">
-    <input type="tel" class="form-control form-control-sm phone-input" value="{phone}" placeholder="手機號碼">
-</script>
-<script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="~/js/indexHome.js" asp-append-version="true"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/indexHome.js" asp-append-version="true"></script>
+</body>
+</html>

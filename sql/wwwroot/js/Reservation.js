@@ -1,58 +1,112 @@
-﻿// 頁面載入時初始化
+﻿const reservationPageState = {
+    currentPage: 1,
+    pageSize: 6,
+    pendingConfirmAction: null
+};
+
+let successModalInstance;
+let errorModalInstance;
+let confirmModalInstance;
+
 $(document).ready(function () {
+    const $config = $('#reservationPageConfig');
+    reservationPageState.pageSize = parseInt($config.data('page-size') || 6, 10);
+
+    successModalInstance = new bootstrap.Modal(document.getElementById('successModal'));
+    errorModalInstance = new bootstrap.Modal(document.getElementById('errorModal'));
+    confirmModalInstance = new bootstrap.Modal(document.getElementById('confirmModal'));
+
     updateUserWelcome();
+    initializeFutureReservationInputs();
+    bindReservationPageEvents();
     refreshAllEquipmentStatus();
+    applyEquipmentFiltersAndPagination();
 
-    // 每30秒自動更新狀態
     setInterval(refreshAllEquipmentStatus, 30000);
-
 });
 
-// 更新使用者歡迎訊息
+function bindReservationPageEvents() {
+    $('#availabilityFilter, #categoryFilter').on('change', function () {
+        reservationPageState.currentPage = 1;
+        applyEquipmentFiltersAndPagination();
+    });
+
+    $('#confirmAction').on('click', function () {
+        confirmModalInstance.hide();
+        if (typeof reservationPageState.pendingConfirmAction === 'function') {
+            const action = reservationPageState.pendingConfirmAction;
+            reservationPageState.pendingConfirmAction = null;
+            action();
+        }
+    });
+}
+
+function initializeFutureReservationInputs() {
+    const $config = $('#reservationPageConfig');
+    const advanceDays = parseInt($config.data('advance-days') || 7, 10);
+    const today = getLocalDateOnly(new Date());
+    const minDate = formatLocalDate(today);
+    const maxDate = formatLocalDate(addDays(today, advanceDays));
+
+    $('.future-date-input').each(function () {
+        $(this).attr('min', minDate);
+        $(this).attr('max', maxDate);
+        const currentValue = $(this).val();
+        if (!currentValue || currentValue < minDate || currentValue > maxDate) {
+            $(this).val(minDate);
+        }
+    });
+}
+
 function updateUserWelcome() {
     $.ajax({
         url: '/Equipment/GetCurrentUser',
         type: 'GET',
         success: function (response) {
             if (response.userName) {
-                $('#userWelcome').html(`歡迎，<strong>${response.userName}</strong>！`);
+                $('#userWelcome').html('歡迎，<strong>' + escapeHtml(response.userName) + '</strong>');
             } else {
                 $('#userWelcome').html('請先<a href="/Account/Login">登入</a>');
             }
         },
         error: function () {
-            $('#userWelcome').html('無法載入使用者資訊');
+            $('#userWelcome').html('載入使用者資訊失敗');
         }
     });
 }
 
-// 刷新所有設備狀態
 function refreshAllEquipmentStatus() {
-    // console.log('刷新所有設備狀態...');
     $('.equipment-item').each(function () {
         const equipmentId = $(this).data('equipment-id');
         refreshEquipmentStatus(equipmentId);
     });
 }
 
-// 刷新單個設備狀態
 function refreshEquipmentStatus(equipmentId) {
     $.ajax({
         url: '/Equipment/GetQueueInfo',
         type: 'GET',
         data: { equipmentId: equipmentId },
         success: function (response) {
-            updateEquipmentDisplay(equipmentId, response);
+            if (!response.success || !response.data) {
+                setEquipmentAvailabilityState(equipmentId, 'error');
+                $('#status-' + equipmentId).text('載入失敗').removeClass().addClass('status-offline');
+                $('#reserve-btn-' + equipmentId).addClass('disabled-btn').prop('disabled', true);
+                applyEquipmentFiltersAndPagination();
+                return;
+            }
+
+            updateEquipmentDisplay(equipmentId, response.data);
         },
-        error: function (xhr, status, error) {
-            console.error('獲取設備狀態失敗:', error);
-            $('#status-' + equipmentId).text('狀態更新失敗').removeClass().addClass('status-offline');
+        error: function () {
+            setEquipmentAvailabilityState(equipmentId, 'error');
+            $('#status-' + equipmentId).text('載入失敗').removeClass().addClass('status-offline');
             $('#reserve-btn-' + equipmentId).addClass('disabled-btn').prop('disabled', true);
+            applyEquipmentFiltersAndPagination();
         }
     });
 }
 
-// 更新設備顯示狀態
 function updateEquipmentDisplay(equipmentId, data) {
     const $status = $('#status-' + equipmentId);
     const $users = $('#users-' + equipmentId);
@@ -62,106 +116,72 @@ function updateEquipmentDisplay(equipmentId, data) {
     const $availableTime = $('#available-time-' + equipmentId);
     const $reserveBtn = $('#reserve-btn-' + equipmentId);
 
-    // 更新使用人數和排隊人數
     const currentUsers = data.currentUsers || 0;
     const waitingCount = data.waitingCount || 0;
 
     $users.text(currentUsers);
     $queue.text(waitingCount);
 
-    // 檢查設備可用性
     checkEquipmentAvailabilityWithTaiwanTime(equipmentId).then(availability => {
-        console.log(`設備 ${equipmentId} 可用性:`, availability);
-
         if (!availability.canReserve) {
-            // 不在開放時間內 - 禁用按鈕
-            $status.text('不可預約').removeClass().addClass('status-closed');
-            $reserveBtn.addClass('disabled-btn').prop('disabled', true);
+            setEquipmentAvailabilityState(equipmentId, 'closed');
+            $status.text('非開放時間').removeClass().addClass('status-closed');
+            $reserveBtn.text('立即使用').addClass('disabled-btn').prop('disabled', true);
             $queueInfo.hide();
-            $status.attr('title', availability.message);
-        } else if (availability.isFull) {
-            // 設備已滿 - 但按鈕不禁用，可以進入排隊
-            $status.text('已滿，可排隊').removeClass().addClass('status-full');
-            $reserveBtn.removeClass('disabled-btn').prop('disabled', false);
+            return;
+        }
+
+        if (availability.isFull) {
+            setEquipmentAvailabilityState(equipmentId, 'queue');
+            $status.text('需要排隊').removeClass().addClass('status-full');
+            $reserveBtn.text('加入排隊').removeClass('disabled-btn').prop('disabled', false);
             $queueInfo.show();
 
-            // 等待時間計算
-            const averageUsageTime = availability.averageUsageTime || 30; // 從後端獲取或使用默認值
+            const averageUsageTime = availability.averageUsageTime || 30;
             const waitMinutes = calculateAccurateWaitTime(waitingCount, currentUsers, availability.maxUsers, averageUsageTime);
-
             $waitTime.text(waitMinutes);
 
-            // 計算預計可用時間
             const availableTime = new Date(new Date().getTime() + waitMinutes * 60000);
             $availableTime.text(availableTime.toLocaleTimeString('zh-TW', {
                 hour: '2-digit',
                 minute: '2-digit'
             }));
-
-            // 顯示詳細的排隊信息
-            let queueMessage = `設備已滿\n`;
-            queueMessage += `當前使用: ${currentUsers}/${availability.maxUsers}人\n`;
-            queueMessage += `排隊人數: ${waitingCount}人\n`;
-
-            if (waitMinutes > 0) {
-                queueMessage += `預計等待: ${waitMinutes}分鐘`;
-            } else {
-                queueMessage += `有空位時立即開始`;
-            }
-
-            $status.attr('title', queueMessage);
-            $reserveBtn.text('加入排隊');
         } else {
-            // 可預約
-            $status.text('可預約').removeClass().addClass('status-available');
-            $reserveBtn.removeClass('disabled-btn').prop('disabled', false);
-            $reserveBtn.text('立即預約');
+            setEquipmentAvailabilityState(equipmentId, 'immediate');
+            $status.text('可立即使用').removeClass().addClass('status-available');
+            $reserveBtn.text('立即使用').removeClass('disabled-btn').prop('disabled', false);
             $queueInfo.hide();
-            $status.attr('title', availability.message);
         }
-    }).catch(error => {
-        console.error('檢查設備可用性失敗:', error);
-        $status.text('狀態未知').removeClass().addClass('status-closed');
-        $reserveBtn.addClass('disabled-btn').prop('disabled', true);
+
+        applyEquipmentFiltersAndPagination();
+    }).catch(() => {
+        setEquipmentAvailabilityState(equipmentId, 'error');
+        $status.text('載入失敗').removeClass().addClass('status-offline');
+        $reserveBtn.text('立即使用').addClass('disabled-btn').prop('disabled', true);
+        applyEquipmentFiltersAndPagination();
     });
 }
 
-function calculateAccurateWaitTime(queueCount, currentUsers, maxUsers, averageUsageTime = 30) {
-    console.log(`準確計算: 排隊${queueCount}人, 使用${currentUsers}/${maxUsers}, 平均${averageUsageTime}分鐘`);
+function setEquipmentAvailabilityState(equipmentId, state) {
+    $('.equipment-item[data-equipment-id="' + equipmentId + '"]').attr('data-availability-state', state);
+}
 
-    // 沒人排隊
+function calculateAccurateWaitTime(queueCount, currentUsers, maxUsers, averageUsageTime = 30) {
     if (queueCount === 0) {
         return 0;
     }
 
-    // 設備還有空位
     if (currentUsers < maxUsers) {
-        // 還有空位，排隊的人可以立即使用
         return 0;
     }
 
-    // 情況3: 設備已滿，有人排隊
-    // 等待時間 = 當前使用者剩餘時間 + 前面排隊的人的使用時間
-
-    // 假設當前使用者平均還剩 25% 的使用時間（更保守的估計）
     const currentUsersRemainingTime = currentUsers * (averageUsageTime * 0.25);
-
-    // 排隊在你前面的人數
-    const peopleAhead = queueCount; // 注意：這裡是總排隊人數，新加入的會在最後
-
-    // 前面的人總使用時間（不包括你自己）
+    const peopleAhead = queueCount;
     const queueAheadTime = peopleAhead * averageUsageTime;
+    const totalWaitTime = currentUsersRemainingTime + queueAheadTime;
 
-    // 總等待時間
-    let totalWaitTime = currentUsersRemainingTime + queueAheadTime;
-
-    console.log(`等待時間分解: 當前使用者剩餘${currentUsersRemainingTime}分鐘 + 前面${peopleAhead}人排隊${queueAheadTime}分鐘 = ${totalWaitTime}分鐘`);
-
-    // 最少等待5分鐘，最多不超過合理範圍
-    return Math.max(5, Math.min(totalWaitTime, 240)); // 最多4小時
+    return Math.max(5, Math.min(totalWaitTime, 240));
 }
-
-
 
 function checkEquipmentAvailabilityWithTaiwanTime(equipmentId) {
     return new Promise((resolve, reject) => {
@@ -170,7 +190,12 @@ function checkEquipmentAvailabilityWithTaiwanTime(equipmentId) {
             type: 'GET',
             data: { equipmentId: equipmentId },
             success: function (response) {
-                resolve(response);
+                if (!response.success || !response.data) {
+                    reject(response.message || '檢查設備可用性時發生錯誤');
+                    return;
+                }
+
+                resolve(response.data);
             },
             error: function (xhr, status, error) {
                 reject(error);
@@ -178,45 +203,277 @@ function checkEquipmentAvailabilityWithTaiwanTime(equipmentId) {
         });
     });
 }
-function showSuccess(message) {
-    $('#successMessage').text(message);
-    $('#successModal').modal('show');
+
+function applyEquipmentFiltersAndPagination() {
+    const availabilityFilter = $('#availabilityFilter').val();
+    const categoryFilter = $('#categoryFilter').val();
+    const allItems = $('.equipment-item').toArray();
+
+    const filteredItems = allItems.filter(item => {
+        const $item = $(item);
+        const category = $item.data('category');
+        const availabilityState = $item.attr('data-availability-state');
+
+        const matchCategory = categoryFilter === 'all' || category === categoryFilter;
+        const matchAvailability =
+            availabilityFilter === 'all' ||
+            (availabilityFilter === 'immediate' && availabilityState === 'immediate') ||
+            (availabilityFilter === 'not-immediate' && availabilityState !== 'immediate');
+
+        return matchCategory && matchAvailability;
+    });
+
+    const totalItems = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / reservationPageState.pageSize));
+
+    if (reservationPageState.currentPage > totalPages) {
+        reservationPageState.currentPage = totalPages;
+    }
+
+    const startIndex = (reservationPageState.currentPage - 1) * reservationPageState.pageSize;
+    const endIndex = startIndex + reservationPageState.pageSize;
+
+    $('.equipment-item').hide();
+    filteredItems.slice(startIndex, endIndex).forEach(item => $(item).show());
+
+    $('#emptyEquipmentState').toggle(totalItems === 0);
+    $('#equipmentCountLabel').text(buildEquipmentCountLabel(totalItems, totalPages));
+    renderPagination(totalPages);
 }
 
-function showError(message) {
-    $('#errorMessage').text(message);
-    $('#errorModal').modal('show');
+function buildEquipmentCountLabel(totalItems, totalPages) {
+    if (totalItems === 0) {
+        return '目前沒有符合條件的設備';
+    }
+
+    return '目前共有 ' + totalItems + ' 台設備，共 ' + totalPages + ' 頁，現在顯示第 ' + reservationPageState.currentPage + ' 頁';
 }
 
-function showConfirm(message, confirmCallback) {
-    $('#confirmMessage').text(message);
-    $('#confirmModal').modal('show');
+function renderPagination(totalPages) {
+    const $pagination = $('#reservationPagination');
+    $pagination.empty();
 
-    // 移除舊的事件監聽器
-    $('#confirmAction').off('click');
+    if (totalPages <= 1) {
+        return;
+    }
 
-    // 添加新的事件監聽器
-    $('#confirmAction').on('click', function () {
-        $('#confirmModal').modal('hide');
-        if (confirmCallback) confirmCallback();
+    const $nav = $('<nav aria-label="設備分頁"></nav>');
+    const $list = $('<ul class="pagination justify-content-center flex-wrap mb-0"></ul>');
+
+    $list.append(createPaginationItem('上一頁', reservationPageState.currentPage === 1, function () {
+        changePage(reservationPageState.currentPage - 1);
+    }));
+
+    for (let page = 1; page <= totalPages; page++) {
+        const isActive = page === reservationPageState.currentPage;
+        const $item = $('<li class="page-item"></li>').toggleClass('active', isActive);
+        const $button = $('<button type="button" class="page-link"></button>').text(page);
+        $button.on('click', function () {
+            changePage(page);
+        });
+        $item.append($button);
+        $list.append($item);
+    }
+
+    $list.append(createPaginationItem('下一頁', reservationPageState.currentPage === totalPages, function () {
+        changePage(reservationPageState.currentPage + 1);
+    }));
+
+    $nav.append($list);
+    $pagination.append($nav);
+}
+
+function createPaginationItem(text, disabled, onClick) {
+    const $item = $('<li class="page-item"></li>').toggleClass('disabled', disabled);
+    const $button = $('<button type="button" class="page-link"></button>').text(text);
+
+    if (!disabled) {
+        $button.on('click', onClick);
+    }
+
+    $item.append($button);
+    return $item;
+}
+
+function changePage(page) {
+    if (page < 1) {
+        return;
+    }
+
+    reservationPageState.currentPage = page;
+    applyEquipmentFiltersAndPagination();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function toggleFuturePlanner(equipmentId) {
+    const $planner = $('#future-planner-' + equipmentId);
+    const shouldShow = !$planner.is(':visible');
+
+    $('.future-planner').hide();
+    if (shouldShow) {
+        $planner.show();
+        loadFutureReservationPlanning(equipmentId);
+    }
+}
+
+function loadFutureReservationPlanning(equipmentId) {
+    const reservationDate = $("#future-date-" + equipmentId).val();
+    const $select = $("#future-slot-select-" + equipmentId);
+    const $hint = $("#future-slot-hint-" + equipmentId);
+    const todayString = formatLocalDate(getLocalDateOnly(new Date()));
+
+    // 有些瀏覽器允許手動輸入日期，所以送查詢前先擋掉過去日期。
+    if (reservationDate && reservationDate < todayString) {
+        $("#future-date-" + equipmentId).val(todayString);
+        $select.html('<option value="">請重新選擇今天之後的日期</option>');
+        $hint.text('過去日期不能預約，已自動切回今天。');
+        return;
+    }
+
+    if (!reservationDate) {
+        $select.html('<option value="">請先選擇日期</option>');
+        $hint.text('');
+        return;
+    }
+
+    $select.html('<option value="">正在載入可預約時段...</option>');
+    $hint.text('');
+
+    $.ajax({
+        url: '/Equipment/GetFutureReservationPlanning',
+        type: 'GET',
+        data: {
+            equipmentId: equipmentId,
+            reservationDate: reservationDate
+        },
+        success: function (response) {
+            if (!response.success || !response.data) {
+                $select.html('<option value="">載入失敗</option>');
+                $hint.text(response.message || '目前無法載入可預約時段');
+                return;
+            }
+
+            renderFutureReservationPlanning(equipmentId, response.data);
+        },
+        error: function (xhr, status, error) {
+            $select.html('<option value="">載入失敗</option>');
+            $hint.text('目前無法載入可預約時段：' + error);
+        }
     });
 }
-// 發起預約
+
+function renderFutureReservationPlanning(equipmentId, planning) {
+    const $select = $('#future-slot-select-' + equipmentId);
+    const selectableSlots = (planning.slots || []).filter(slot => slot.isSelectable);
+
+    if (selectableSlots.length === 0) {
+        $select.html('<option value="">當天沒有可預約時段</option>');
+        $('#future-slot-hint-' + equipmentId).text('請改選其他日期。');
+        return;
+    }
+
+    const options = ['<option value="">請選擇預約時間</option>']
+        .concat(selectableSlots.map(slot => {
+            const queueExpected = slot.requiresQueueConfirmation ? 'true' : 'false';
+            const statusNote = escapeHtml(slot.statusNote || '');
+            return '<option value="' + slot.slotStartTime
+                + '" data-queue-expected="' + queueExpected
+                + '" data-status-note="' + statusNote + '">'
+                + escapeHtml(slot.displayLabel) + '</option>';
+        }));
+
+    $select.html(options.join(''));
+    $('#future-slot-hint-' + equipmentId).text('請選擇你要預約的開始時間。');
+}
+
+function updateFutureSlotHint(equipmentId) {
+    const $selected = $('#future-slot-select-' + equipmentId + ' option:selected');
+    const statusNote = $selected.data('status-note') || '';
+    const queueExpected = $selected.data('queue-expected') === true || $selected.data('queue-expected') === 'true';
+
+    if (!$selected.val()) {
+        $('#future-slot-hint-' + equipmentId).text('');
+        return;
+    }
+
+    if (queueExpected) {
+        $('#future-slot-hint-' + equipmentId).text(statusNote || '此時段依目前推算仍可能需要排隊，建立前請再次確認。');
+        return;
+    }
+
+    $('#future-slot-hint-' + equipmentId).text(statusNote || '此時段目前可正常建立預約。');
+}
+
+function createFutureReservation(equipmentId) {
+    const reservationDate = $('#future-date-' + equipmentId).val();
+    const $selected = $('#future-slot-select-' + equipmentId + ' option:selected');
+    const slotStartTime = $selected.val();
+    const requiresQueueConfirmation = $selected.data('queue-expected') === true || $selected.data('queue-expected') === 'true';
+
+    if (!reservationDate || !slotStartTime) {
+        showError('請先選擇日期與預約時間');
+        return;
+    }
+
+    const confirmMessage = requiresQueueConfirmation
+        ? '系統推算 ' + reservationDate + ' ' + slotStartTime + ' 這個時段仍可能需要排隊。\n\n如果你同意，系統會建立預約，並在到點後視狀況排入隊列。\n\n是否仍要建立預約？'
+        : '確定要建立 ' + reservationDate + ' ' + slotStartTime + ' 的預約嗎？';
+
+    showConfirm(confirmMessage, function () {
+        submitFutureReservation(equipmentId, reservationDate, slotStartTime, requiresQueueConfirmation);
+    });
+}
+
+function submitFutureReservation(equipmentId, reservationDate, slotStartTime, confirmQueueExpected) {
+    showLoading(true);
+
+    $.ajax({
+        url: '/Equipment/CreateFutureReservation',
+        type: 'POST',
+        data: {
+            equipmentId: equipmentId,
+            reservationDate: reservationDate,
+            selectedSlotStartTime: slotStartTime,
+            confirmQueueExpected: confirmQueueExpected
+        },
+        success: function (response) {
+            showLoading(false);
+
+            if (response.success) {
+                showSuccess(response.message + '\n\n預約時間：' + reservationDate + ' ' + slotStartTime);
+                loadFutureReservationPlanning(equipmentId);
+                refreshEquipmentStatus(equipmentId);
+                return;
+            }
+
+            if (response.requiresConfirmation && response.queueExpected) {
+                showConfirm(response.message + '\n\n是否仍要建立這筆預約？', function () {
+                    submitFutureReservation(equipmentId, reservationDate, slotStartTime, true);
+                });
+                return;
+            }
+
+            showError(response.message || '建立預約失敗');
+        },
+        error: function (xhr, status, error) {
+            showLoading(false);
+            showError('建立預約失敗：' + error);
+        }
+    });
+}
+
 function makeReservation(equipmentId) {
     const $reserveBtn = $('#reserve-btn-' + equipmentId);
 
     if ($reserveBtn.prop('disabled')) {
-        showError('當前無法預約此設備');
+        showError('目前無法立即使用這台設備');
         return;
     }
 
-    // 根據當前狀態顯示不同的確認訊息
     const currentStatus = $('#status-' + equipmentId).text();
-    let confirmMessage = '確定要預約此設備嗎？';
-
-    if (currentStatus.includes('排隊')) {
-        confirmMessage = '設備當前已滿，確定要加入排隊嗎？';
-    }
+    const confirmMessage = currentStatus.includes('排隊')
+        ? '這台設備目前需要排隊，是否加入排隊？'
+        : '確定要立即使用這台設備嗎？';
 
     showConfirm(confirmMessage, function () {
         showLoading(true);
@@ -233,56 +490,76 @@ function makeReservation(equipmentId) {
                 if (response.success) {
                     let message = response.message;
                     if (response.waitingPosition) {
-                        message += '\n\n📋 排隊信息：';
-                        message += '\n📍 排隊位置：第 ' + response.waitingPosition + ' 位';
-                        message += '\n⏱️ 預計等待：約 ' + response.estimatedWaitTime + ' 分鐘';
-                        if (response.expectedStartTime) {
-                            const startTime = new Date(response.expectedStartTime);
-                            message += '\n🕐 預計開始：' + startTime.toLocaleString('zh-TW');
-                        }
-                        message += '\n\n系統會在輪到您時自動通知';
+                        message += '\n\n排隊順位：第 ' + response.waitingPosition + ' 位';
+                        message += '\n預估等待時間：約 ' + response.estimatedWaitTime + ' 分鐘';
                     }
-                    showSuccess(message);
 
-                    // 更新設備狀態
+                    showSuccess(message);
                     refreshEquipmentStatus(equipmentId);
                     refreshAllEquipmentStatus();
-
-                    // 如果是立即使用，詢問是否跳轉
-                    if (!response.waitingPosition) {
-                        setTimeout(() => {
-                            showConfirm('預約成功！是否要查看您的預約狀態？', function () {
-                                window.location.href = '/Equipment/MyReservations';
-                            });
-                        }, 1500);
-                    }
                 } else {
-                    showError(response.message);
-                    $reserveBtn.text(currentStatus.includes('排隊') ? '加入排隊' : '立即預約');
+                    showError(response.message || '立即使用失敗');
                 }
             },
             error: function (xhr, status, error) {
                 showLoading(false);
-                $reserveBtn.prop('disabled', false).text(currentStatus.includes('排隊') ? '加入排隊' : '立即預約');
+                $reserveBtn.prop('disabled', false).text(currentStatus.includes('排隊') ? '加入排隊' : '立即使用');
 
                 if (xhr.status === 401) {
-                    showError('請先登入系統');
+                    showError('請先登入再進行預約');
                     setTimeout(() => {
                         window.location.href = '/Account/Login';
-                    }, 2000);
+                    }, 1500);
                 } else {
-                    showError('預約請求失敗：' + error);
+                    showError('立即使用失敗：' + error);
                 }
             }
         });
     });
 }
 
-// 顯示/隱藏載入動畫
+function showSuccess(message) {
+    $('#successMessage').text(message);
+    successModalInstance.show();
+}
+
+function showError(message) {
+    $('#errorMessage').text(message);
+    errorModalInstance.show();
+}
+
+function showConfirm(message, confirmCallback) {
+    reservationPageState.pendingConfirmAction = confirmCallback;
+    $('#confirmMessage').text(message);
+    confirmModalInstance.show();
+}
+
 function showLoading(show) {
-    if (show) {
-        $('#loadingSpinner').show();
-    } else {
-        $('#loadingSpinner').hide();
-    }
+    $('#loadingSpinner').toggle(show);
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getLocalDateOnly(date) {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function addDays(date, days) {
+    const nextDate = new Date(date);
+    nextDate.setDate(nextDate.getDate() + days);
+    return nextDate;
+}
+
+function formatLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return year + '-' + month + '-' + day;
 }

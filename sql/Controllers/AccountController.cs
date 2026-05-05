@@ -1,96 +1,161 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using sql.Models;
-using Microsoft.Data.SqlClient;
+using sql.Services;
 
 namespace sql.Controllers
 {
+    // 帳號控制器負責登入、登出與忘記密碼流程。
+    // 這裡盡量只負責接收表單、呼叫 Service、回傳畫面結果。
     public class AccountController : Controller
     {
-        private readonly DBmanager _dbManager;
+        private readonly AccountService _accountService;
+        private readonly CurrentUserService _currentUserService;
 
-        public AccountController()
+        public AccountController(AccountService accountService, CurrentUserService currentUserService)
         {
-            _dbManager = new DBmanager();
+            _accountService = accountService;
+            _currentUserService = currentUserService;
         }
 
-        // 登入頁面
         public IActionResult Login()
         {
-            return View();
-        }
+            var currentUser = _currentUserService.GetCurrentUser();
+            if (currentUser.IsAuthenticated)
+            {
+                return currentUser.IsManager
+                    ? RedirectToAction("Index", "Equipment")
+                    : RedirectToAction("Reservation", "Equipment");
+            }
 
-        // 忘記密碼頁面
-        public IActionResult ForgotPassword()
-        {
-            return View();
+            return View(new LoginFormViewModel());
         }
-
 
         [HttpPost]
-        public IActionResult Login(string username, string password)
+        public IActionResult Login(LoginFormViewModel form)
         {
-            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
+            if (!ModelState.IsValid)
             {
-                ViewBag.Error = "請輸入帳號和密碼";
-                return View();
+                form.ErrorMessage = "請確認帳號與密碼是否都有填寫。";
+                return View(form);
             }
 
-            var user = _dbManager.ValidateUser(username, password);
-            if (user != null)
+            var user = _accountService.ValidateUser(form.UserName, form.Password);
+            if (user == null)
             {
-                // 儲存使用者資訊到 Session
-                HttpContext.Session.SetInt32("UserId", user.id);
-                HttpContext.Session.SetString("UserName", user.userName);
-                HttpContext.Session.SetString("UserRole", user.role ?? "user"); // 儲存使用者角色
+                form.ErrorMessage = "帳號或密碼錯誤。";
+                return View(form);
+            }
 
-                // 根據角色決定跳轉頁面
-                if (user.role == "manager" || user.role == "admin")
-                {
-                    // 管理者跳轉到 Equipment/Index
-                    return RedirectToAction("Index", "Equipment");
-                }
-                else
-                {
-                    // 一般使用者跳轉到 Equipment/Reservation
-                    return RedirectToAction("Reservation", "Equipment");
-                }
-            }
-            else
+            HttpContext.Session.SetInt32("UserId", user.id);
+            HttpContext.Session.SetString("UserName", user.userName);
+            HttpContext.Session.SetString("UserRole", user.role ?? "user");
+
+            if (user.role == "manager" || user.role == "admin")
             {
-                ViewBag.Error = "帳號或密碼錯誤";
-                return View();
+                return RedirectToAction("Index", "Equipment");
             }
+
+            return RedirectToAction("Reservation", "Equipment");
         }
 
-        // 登出
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
             return RedirectToAction("Login");
         }
 
-        // 註冊頁面 (使用您現有的 addAccount)
         public IActionResult Register()
         {
             return RedirectToAction("addAccount", "Home");
         }
 
-        // 檢查當前登入使用者是否為管理者
-        public bool IsCurrentUserManager()
+        public IActionResult ForgotPassword()
         {
-            var userRole = HttpContext.Session.GetString("UserRole");
-            return userRole == "manager" || userRole == "admin";
+            return View(new ForgotPasswordFormViewModel());
         }
 
-        // 取得當前使用者資訊
+        [HttpGet]
+        public JsonResult PasswordResetEmailDebug()
+        {
+            var diagnostic = _accountService.GetPasswordResetEmailDiagnosticInfo();
+            return Json(diagnostic);
+        }
+
+        [HttpPost]
+        public IActionResult ForgotPassword(ForgotPasswordFormViewModel form)
+        {
+            return form.Step == "reset"
+                ? HandleResetPassword(form)
+                : HandleRequestPasswordReset(form);
+        }
+
+        private IActionResult HandleRequestPasswordReset(ForgotPasswordFormViewModel form)
+        {
+            if (string.IsNullOrWhiteSpace(form.Email))
+            {
+                form.ErrorMessage = "請輸入註冊時使用的電子郵件。";
+                form.Step = "request";
+                return View(form);
+            }
+
+            var result = _accountService.RequestPasswordReset(form.Email);
+            if (!result.Success)
+            {
+                form.ErrorMessage = result.Message;
+                form.Step = "request";
+                return View(form);
+            }
+
+            form.SuccessMessage = result.Message;
+            form.DebugCode = result.DebugCode;
+            form.Step = "reset";
+            return View(form);
+        }
+
+        private IActionResult HandleResetPassword(ForgotPasswordFormViewModel form)
+        {
+            if (string.IsNullOrWhiteSpace(form.Email) ||
+                string.IsNullOrWhiteSpace(form.VerificationCode) ||
+                string.IsNullOrWhiteSpace(form.NewPassword) ||
+                string.IsNullOrWhiteSpace(form.ConfirmPassword))
+            {
+                form.ErrorMessage = "請完整填寫電子郵件、驗證碼與新密碼。";
+                form.Step = "reset";
+                return View(form);
+            }
+
+            if (form.NewPassword != form.ConfirmPassword)
+            {
+                form.ErrorMessage = "兩次輸入的新密碼不一致。";
+                form.Step = "reset";
+                return View(form);
+            }
+
+            var result = _accountService.ResetPassword(form.Email, form.VerificationCode, form.NewPassword);
+            if (!result.Success)
+            {
+                form.ErrorMessage = result.Message;
+                form.Step = "reset";
+                return View(form);
+            }
+
+            return View(new ForgotPasswordFormViewModel
+            {
+                Email = form.Email,
+                SuccessMessage = result.Message,
+                Step = "request"
+            });
+        }
+
+        public bool IsCurrentUserManager()
+        {
+            return _currentUserService.IsManager();
+        }
+
         public (int? userId, string userName, string role) GetCurrentUser()
         {
-            var userId = HttpContext.Session.GetInt32("UserId");
-            var userName = HttpContext.Session.GetString("UserName");
-            var role = HttpContext.Session.GetString("UserRole") ?? "user";
-
-            return (userId, userName, role);
+            var currentUser = _currentUserService.GetCurrentUser();
+            return (currentUser.UserId, currentUser.UserName, currentUser.Role);
         }
     }
 }

@@ -1,8 +1,8 @@
-﻿@{
+@model sql.Models.MyReservationsPageViewModel
+@{
     ViewData["Title"] = "我的預約";
     Layout = "";
 }
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -10,134 +10,84 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="~/css/portal-shell.css" rel="stylesheet" asp-append-version="true">
     <link href="~/css/MyReservations.css" rel="stylesheet" asp-append-version="true">
 </head>
-<!-- 成功訊息 Modal -->
-<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-success text-white">
-                <h5 class="modal-title">✓ 操作成功</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="successMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
+<body class="portal-body">
+    <div class="modal fade portal-modal" id="successModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-success text-white"><h5 class="modal-title">操作成功</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="successMessage" class="mb-0"></p></div><div class="modal-footer"><button type="button" class="btn btn-success" data-bs-dismiss="modal">確定</button></div></div></div></div>
+    <div class="modal fade portal-modal" id="errorModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger text-white"><h5 class="modal-title">操作失敗</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="errorMessage" class="mb-0"></p></div><div class="modal-footer"><button type="button" class="btn btn-danger" data-bs-dismiss="modal">確定</button></div></div></div></div>
+    <div class="modal fade portal-modal" id="confirmModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-warning"><h5 class="modal-title">請確認</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="confirmMessage" class="mb-0"></p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button><button type="button" class="btn btn-warning" id="confirmAction">確認</button></div></div></div></div>
 
-<!-- 錯誤訊息 Modal -->
-<div class="modal fade" id="errorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title">✗ 操作失敗</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="portal-shell">
+        <aside class="portal-sidebar">
+            <div class="portal-brand">
+                <h1>智能社區系統</h1>
+                <p>會員預約紀錄</p>
             </div>
-            <div class="modal-body">
-                <p id="errorMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
+            <nav class="portal-nav">
+                @if (Model.IsManager)
+                {
+                    <span class="portal-nav-title">管理功能</span>
+                    <a class="portal-nav-link" href="/Home/Index">帳戶管理</a>
+                    <a class="portal-nav-link" href="/Equipment/Index">設備管理</a>
+                    <a class="portal-nav-link" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
+                    <a class="portal-nav-link" href="/Home/AdminActionLogs">管理者操作紀錄</a>
+                }
 
-<!-- 確認 Modal -->
-<div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title">⚠️ 確認操作</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="confirmMessage"></p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
-                <button type="button" class="btn btn-warning" id="confirmAction">確定</button>
-            </div>
-        </div>
-    </div>
-</div>
-<body>
-    <div class="header-section">
-        <div class="container">
-            <h1 class="display-4 fw-bold">我的預約</h1>
-            <p class="lead">設備預約記錄</p>
-        </div>
-    </div>
-    <div class="container">
-        <div class="button-container">
-            <a href="/Equipment/Reservation" class="add-equipment-btn">返回預約設備</a>
-        </div>
-        <div class="row">
-            <div class="col-12">
-                <!-- 進行中的預約 -->
-                <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">進行中的預約</h5>
-                    </div>
-                    <div class="card-body" id="activeReservations">
-                        <div class="loading-spinner">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">載入中...</span>
-                            </div>
-                            <p class="mt-2">載入中...</p>
-                        </div>
-                    </div>
+                <div class="portal-nav-group">
+                    <span class="portal-nav-title">會員功能</span>
+                    <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
+                    <a class="portal-nav-link is-active" href="/Equipment/MyReservations">我的預約</a>
                 </div>
+            </nav>
+        </aside>
 
-                <!-- 排隊中的預約 -->
-                <div class="card mb-4">
-                    <div class="card-header bg-warning text-dark">
-                        <h5 class="mb-0">排隊中的預約</h5>
-                    </div>
-                    <div class="card-body" id="waitingReservations">
-                        <div class="loading-spinner">
-                            <div class="spinner-border text-warning" role="status">
-                                <span class="visually-hidden">載入中...</span>
-                            </div>
-                            <p class="mt-2">載入中...</p>
-                        </div>
-                    </div>
+        <main class="portal-main">
+            <div class="portal-topbar">
+                <div class="portal-topbar-title">
+                    <h1>我的預約</h1>
+                    <p>查看未來預約、使用中、排隊中與最近一個月內的歷史紀錄。</p>
                 </div>
-
-                <!-- 歷史記錄 -->
-                <div class="card">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0">歷史記錄</h5>
-                    </div>
-                    <div class="card-body" id="historyReservations">
-                        <div class="loading-spinner">
-                            <div class="spinner-border text-secondary" role="status">
-                                <span class="visually-hidden">載入中...</span>
-                            </div>
-                            <p class="mt-2">載入中...</p>
-                        </div>
-                    </div>
+                <div class="portal-user-panel">
+                    <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
+                    <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
                 </div>
             </div>
-        </div>
+
+            <div class="portal-content">
+                <div class="portal-grid">
+                    <section class="portal-panel">
+                        <div class="portal-section-header"><div><h2 class="portal-section-title">未來預約</h2><p class="portal-section-subtitle">尚未開始的預約紀錄。</p></div></div>
+                        <div id="scheduledReservations" class="reservation-list"><div class="portal-empty">載入中...</div></div>
+                    </section>
+
+                    <section class="portal-panel">
+                        <div class="portal-section-header"><div><h2 class="portal-section-title">使用中</h2><p class="portal-section-subtitle">目前正在使用的設備。</p></div></div>
+                        <div id="activeReservations" class="reservation-list"><div class="portal-empty">載入中...</div></div>
+                    </section>
+
+                    <section class="portal-panel">
+                        <div class="portal-section-header"><div><h2 class="portal-section-title">排隊中</h2><p class="portal-section-subtitle">包含一般排隊與預約轉排隊。</p></div></div>
+                        <div id="waitingReservations" class="reservation-list"><div class="portal-empty">載入中...</div></div>
+                    </section>
+
+                    <section class="portal-panel">
+                        <div class="portal-section-header"><div><h2 class="portal-section-title">歷史紀錄</h2><p class="portal-section-subtitle">只保留最近一個月內的紀錄，並以摺疊方式顯示。</p></div></div>
+                        <div id="historyReservations" class="reservation-list"><div class="portal-empty">載入中...</div></div>
+                        <div id="historyPagination" class="pagination-wrapper mt-3"></div>
+                    </section>
+                </div>
+            </div>
+        </main>
     </div>
 
-    <!-- 載入動畫 -->
-    <div class="loading-spinner" id="globalLoading" style="display: none;">
-        <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">處理中...</span>
-        </div>
-        <p class="mt-2">處理中...</p>
+    <div class="loading-spinner" id="globalLoading" style="display:none;">
+        <div class="spinner-border text-primary" role="status"><span class="visually-hidden">載入中...</span></div>
+        <p class="mt-2 mb-0">載入中...</p>
     </div>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="~/js/MyReservations.js" asp-append-version="true"></script>
-    
 </body>
 </html>
