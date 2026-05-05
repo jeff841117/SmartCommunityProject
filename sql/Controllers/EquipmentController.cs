@@ -252,12 +252,30 @@ namespace sql.Controllers
 
             if (!ModelState.IsValid)
             {
-                var firstError = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
-                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
+                // 這裡多做一層後備解析，原因是設備管理頁是行內編輯，
+                // 使用者有時只改一個欄位，但舊資料列的其他值可能不完全符合新的驗證規則。
+                // 如果直接用 ModelState 擋掉，前端看起來會像是「設備種類改不了」。
+                if (!TryBuildEquipmentFromRequest(out var fallbackEquipment, out var fallbackError))
+                {
+                    var firstError = ModelState.Values
+                        .SelectMany(v => v.Errors)
+                        .Select(e => e.ErrorMessage)
+                        .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
 
-                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認設備欄位是否填寫正確"));
+                    return Json(ApiResponseFactory.OperationFailure(
+                        fallbackError ?? firstError ?? "請確認設備欄位是否填寫正確"));
+                }
+
+                try
+                {
+                    _equipmentService.UpdateEquipment(fallbackEquipment);
+                    return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "使用後備解析更新設備 {EquipmentId} 時發生錯誤", fallbackEquipment.Id);
+                    return Json(ApiResponseFactory.OperationFailure("更新設備時發生錯誤，請稍後再試"));
+                }
             }
 
             try
@@ -281,6 +299,74 @@ namespace sql.Controllers
                 _logger.LogError(ex, "更新設備 {EquipmentId} 時發生錯誤", form.Id);
                 return Json(ApiResponseFactory.OperationFailure("更新設備時發生錯誤，請稍後再試"));
             }
+        }
+
+        private bool TryBuildEquipmentFromRequest(out Equipment equipment, out string? errorMessage)
+        {
+            equipment = new Equipment();
+            errorMessage = null;
+
+            var idValue = Request.Form["Id"].ToString();
+            if (!byte.TryParse(idValue, out var equipmentId))
+            {
+                errorMessage = "設備編號格式錯誤";
+                return false;
+            }
+
+            var equipmentName = Request.Form["EquipmentName"].ToString().Trim();
+            if (string.IsNullOrWhiteSpace(equipmentName))
+            {
+                errorMessage = "請輸入設備名稱";
+                return false;
+            }
+
+            var equipmentCategory = Request.Form["EquipmentCategory"].ToString().Trim();
+            if (string.IsNullOrWhiteSpace(equipmentCategory))
+            {
+                errorMessage = "請選擇設備種類";
+                return false;
+            }
+
+            var maxUsersValue = Request.Form["MaxUsers"].ToString();
+            if (!byte.TryParse(maxUsersValue, out var maxUsers) || maxUsers == 0)
+            {
+                errorMessage = "同時上限人數必須介於 1 到 255";
+                return false;
+            }
+
+            var availableTimeValue = Request.Form["AvailableTime"].ToString();
+            if (!short.TryParse(availableTimeValue, out var availableTime) || availableTime < 0 || availableTime > 1440)
+            {
+                errorMessage = "可使用時間必須介於 0 到 1440 分鐘";
+                return false;
+            }
+
+            var openTimeValue = Request.Form["OpenTime"].ToString();
+            if (!TimeSpan.TryParse(openTimeValue, out var openTime))
+            {
+                errorMessage = "開放時間格式錯誤";
+                return false;
+            }
+
+            var closeTimeValue = Request.Form["CloseTime"].ToString();
+            if (!TimeSpan.TryParse(closeTimeValue, out var closeTime))
+            {
+                errorMessage = "關閉時間格式錯誤";
+                return false;
+            }
+
+            equipment = new Equipment
+            {
+                Id = equipmentId,
+                equipmentName = equipmentName,
+                EquipmentCategory = equipmentCategory,
+                MaxUsers = maxUsers,
+                AvailableTime = availableTime,
+                OpenTime = openTime,
+                CloseTime = closeTime
+            };
+
+            return true;
         }
 
         // 預約按鈕按下後，Controller 只做三件事：

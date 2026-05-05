@@ -64,7 +64,7 @@ function updateUserWelcome() {
         type: 'GET',
         success: function (response) {
             if (response.userName) {
-                $('#userWelcome').html(`歡迎，<strong>${response.userName}</strong>`);
+                $('#userWelcome').html('歡迎，<strong>' + escapeHtml(response.userName) + '</strong>');
             } else {
                 $('#userWelcome').html('請先<a href="/Account/Login">登入</a>');
             }
@@ -163,7 +163,7 @@ function updateEquipmentDisplay(equipmentId, data) {
 }
 
 function setEquipmentAvailabilityState(equipmentId, state) {
-    $(`.equipment-item[data-equipment-id="${equipmentId}"]`).attr('data-availability-state', state);
+    $('.equipment-item[data-equipment-id="' + equipmentId + '"]').attr('data-availability-state', state);
 }
 
 function calculateAccurateWaitTime(queueCount, currentUsers, maxUsers, averageUsageTime = 30) {
@@ -246,7 +246,7 @@ function buildEquipmentCountLabel(totalItems, totalPages) {
         return '目前沒有符合條件的設備';
     }
 
-    return `目前共有 ${totalItems} 台設備，共 ${totalPages} 頁，現在顯示第 ${reservationPageState.currentPage} 頁`;
+    return '目前共有 ' + totalItems + ' 台設備，共 ' + totalPages + ' 頁，現在顯示第 ' + reservationPageState.currentPage + ' 頁';
 }
 
 function renderPagination(totalPages) {
@@ -376,7 +376,10 @@ function renderFutureReservationPlanning(equipmentId, planning) {
         .concat(selectableSlots.map(slot => {
             const queueExpected = slot.requiresQueueConfirmation ? 'true' : 'false';
             const statusNote = escapeHtml(slot.statusNote || '');
-            return `<option value="${slot.slotStartTime}" data-queue-expected="${queueExpected}" data-status-note="${statusNote}">${slot.displayLabel}</option>`;
+            return '<option value="' + slot.slotStartTime
+                + '" data-queue-expected="' + queueExpected
+                + '" data-status-note="' + statusNote + '">'
+                + escapeHtml(slot.displayLabel) + '</option>';
         }));
 
     $select.html(options.join(''));
@@ -384,7 +387,7 @@ function renderFutureReservationPlanning(equipmentId, planning) {
 }
 
 function updateFutureSlotHint(equipmentId) {
-    const $selected = $(`#future-slot-select-${equipmentId} option:selected`);
+    const $selected = $('#future-slot-select-' + equipmentId + ' option:selected');
     const statusNote = $selected.data('status-note') || '';
     const queueExpected = $selected.data('queue-expected') === true || $selected.data('queue-expected') === 'true';
 
@@ -403,7 +406,7 @@ function updateFutureSlotHint(equipmentId) {
 
 function createFutureReservation(equipmentId) {
     const reservationDate = $('#future-date-' + equipmentId).val();
-    const $selected = $(`#future-slot-select-${equipmentId} option:selected`);
+    const $selected = $('#future-slot-select-' + equipmentId + ' option:selected');
     const slotStartTime = $selected.val();
     const requiresQueueConfirmation = $selected.data('queue-expected') === true || $selected.data('queue-expected') === 'true';
 
@@ -413,8 +416,8 @@ function createFutureReservation(equipmentId) {
     }
 
     const confirmMessage = requiresQueueConfirmation
-        ? `系統推算 ${reservationDate} ${slotStartTime} 這個時段仍可能需要排隊。\n\n如果你同意，系統會建立預約，並在到點後視狀況排入隊列。\n\n是否仍要建立預約？`
-        : `確定要建立 ${reservationDate} ${slotStartTime} 的預約嗎？`;
+        ? '系統推算 ' + reservationDate + ' ' + slotStartTime + ' 這個時段仍可能需要排隊。\n\n如果你同意，系統會建立預約，並在到點後視狀況排入隊列。\n\n是否仍要建立預約？'
+        : '確定要建立 ' + reservationDate + ' ' + slotStartTime + ' 的預約嗎？';
 
     showConfirm(confirmMessage, function () {
         submitFutureReservation(equipmentId, reservationDate, slotStartTime, requiresQueueConfirmation);
@@ -437,14 +440,14 @@ function submitFutureReservation(equipmentId, reservationDate, slotStartTime, co
             showLoading(false);
 
             if (response.success) {
-                showSuccess(`${response.message}\n\n預約時間：${reservationDate} ${slotStartTime}`);
+                showSuccess(response.message + '\n\n預約時間：' + reservationDate + ' ' + slotStartTime);
                 loadFutureReservationPlanning(equipmentId);
                 refreshEquipmentStatus(equipmentId);
                 return;
             }
 
             if (response.requiresConfirmation && response.queueExpected) {
-                showConfirm(`${response.message}\n\n是否仍要建立這筆預約？`, function () {
+                showConfirm(response.message + '\n\n是否仍要建立這筆預約？', function () {
                     submitFutureReservation(equipmentId, reservationDate, slotStartTime, true);
                 });
                 return;
@@ -487,8 +490,8 @@ function makeReservation(equipmentId) {
                 if (response.success) {
                     let message = response.message;
                     if (response.waitingPosition) {
-                        message += `\n\n排隊順位：第 ${response.waitingPosition} 位`;
-                        message += `\n預估等待時間：約 ${response.estimatedWaitTime} 分鐘`;
+                        message += '\n\n排隊順位：第 ' + response.waitingPosition + ' 位';
+                        message += '\n預估等待時間：約 ' + response.estimatedWaitTime + ' 分鐘';
                     }
 
                     showSuccess(message);
@@ -558,5 +561,5 @@ function formatLocalDate(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return year + '-' + month + '-' + day;
 }
