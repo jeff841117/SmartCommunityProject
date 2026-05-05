@@ -6,9 +6,9 @@ namespace sql.Models
 {
     public class ReservationObserverManager
     {
-        private static ReservationObserverManager _instance;
+        private static ReservationObserverManager? _instance;
         private static readonly object _lock = new object();
-        private Dictionary<byte, ReservationSubject> _subjects = new Dictionary<byte, ReservationSubject>();
+        private readonly Dictionary<byte, ReservationSubject> _subjects = new Dictionary<byte, ReservationSubject>();
 
         private ReservationObserverManager()
         {
@@ -32,7 +32,7 @@ namespace sql.Models
         public ReservationSubject GetSubject(byte equipmentId)
         {
             _subjects.TryGetValue(equipmentId, out var subject);
-            return subject;
+            return subject ?? GetOrCreateSubject(equipmentId);
         }
 
         // 這一輪讓 ObserverManager 只負責「保存與提供 subject」，

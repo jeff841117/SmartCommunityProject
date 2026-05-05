@@ -17,6 +17,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
     <PackageReference Include="Microsoft.Data.SqlClient.SNI.runtime" Version="6.0.2" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
   </ItemGroup>
 

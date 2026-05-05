@@ -13,6 +13,16 @@ builder.Configuration.AddJsonFile("appsettings.LocalSecrets.json", optional: tru
 // 可以把它想成先把系統會用到的工具準備好，
 // 之後 Controller / Service 需要時，框架會自動注入。
 builder.Services.AddControllersWithViews();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new()
+    {
+        Title = "Smart Community Reservation API",
+        Version = "v1",
+        Description = "作品集版本的預約、排隊、帳號與管理後台 API。"
+    });
+});
 builder.Services.Configure<PasswordResetEmailOptions>(
     builder.Configuration.GetSection("PasswordResetEmail"));
 
@@ -109,6 +119,15 @@ app.UseAuthorization();
 
 // Session 要放在路由之後，Controller 執行時才讀得到登入資訊。
 app.UseSession();
+
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Smart Community Reservation API v1");
+    options.RoutePrefix = "swagger";
+});
+
+app.MapControllers();
 
 // 預設先進登入頁。
 app.MapControllerRoute(

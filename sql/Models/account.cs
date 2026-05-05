@@ -1,19 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
 namespace sql.Models
 {
+#pragma warning disable CS8981
     public class account
     {
         public int id { get; set; }
         public string userName { get; set; } = string.Empty;
         public string password { get; set; } = string.Empty;
         public double age { get; set; }
-        public string role { get; set; } = "user"; // 默认值为普通用户
+
+        // 預設建立的新帳號都先視為一般會員。
+        public string role { get; set; } = "user";
+
         public string email { get; set; } = string.Empty;
         public string phone { get; set; } = string.Empty;
     }
-
+#pragma warning restore CS8981
 }

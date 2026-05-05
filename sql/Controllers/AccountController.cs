@@ -4,8 +4,8 @@ using sql.Services;
 
 namespace sql.Controllers
 {
-    // AccountController 主要處理登入 / 登出 / 忘記密碼入口。
-    // 這一輪把 ForgotPassword 從「只有申請驗證碼」推進成可真正重設密碼的流程。
+    // 帳號控制器負責登入、登出與忘記密碼流程。
+    // 這裡盡量只負責接收表單、呼叫 Service、回傳畫面結果。
     public class AccountController : Controller
     {
         private readonly AccountService _accountService;
@@ -30,42 +30,26 @@ namespace sql.Controllers
             return View(new LoginFormViewModel());
         }
 
-        public IActionResult ForgotPassword()
-        {
-            return View(new ForgotPasswordFormViewModel());
-        }
-
-        [HttpGet]
-        public JsonResult PasswordResetEmailDebug()
-        {
-            var diagnostic = _accountService.GetPasswordResetEmailDiagnosticInfo();
-            return Json(diagnostic);
-        }
-
         [HttpPost]
         public IActionResult Login(LoginFormViewModel form)
         {
             if (!ModelState.IsValid)
             {
-                form.ErrorMessage = "請輸入帳號和密碼";
+                form.ErrorMessage = "請確認帳號與密碼是否都有填寫。";
                 return View(form);
             }
 
-            // 登入驗證改成走 AccountService，
-            // 這樣帳號相關資料存取就能集中在帳號模組內。
             var user = _accountService.ValidateUser(form.UserName, form.Password);
             if (user == null)
             {
-                form.ErrorMessage = "帳號或密碼錯誤";
+                form.ErrorMessage = "帳號或密碼錯誤。";
                 return View(form);
             }
 
-            // 登入成功後，把最基本的識別資訊放進 Session。
             HttpContext.Session.SetInt32("UserId", user.id);
             HttpContext.Session.SetString("UserName", user.userName);
             HttpContext.Session.SetString("UserRole", user.role ?? "user");
 
-            // 管理者與一般會員進不同入口頁。
             if (user.role == "manager" || user.role == "admin")
             {
                 return RedirectToAction("Index", "Equipment");
@@ -85,23 +69,31 @@ namespace sql.Controllers
             return RedirectToAction("addAccount", "Home");
         }
 
+        public IActionResult ForgotPassword()
+        {
+            return View(new ForgotPasswordFormViewModel());
+        }
+
+        [HttpGet]
+        public JsonResult PasswordResetEmailDebug()
+        {
+            var diagnostic = _accountService.GetPasswordResetEmailDiagnosticInfo();
+            return Json(diagnostic);
+        }
+
         [HttpPost]
         public IActionResult ForgotPassword(ForgotPasswordFormViewModel form)
         {
-            if (form.Step == "reset")
-            {
-                return HandleResetPassword(form);
-            }
-
-            return HandleRequestPasswordReset(form);
+            return form.Step == "reset"
+                ? HandleResetPassword(form)
+                : HandleRequestPasswordReset(form);
         }
 
-        // 申請驗證碼這一步只需要 Email。
         private IActionResult HandleRequestPasswordReset(ForgotPasswordFormViewModel form)
         {
             if (string.IsNullOrWhiteSpace(form.Email))
             {
-                form.ErrorMessage = "請輸入正確的電子郵件";
+                form.ErrorMessage = "請輸入註冊時使用的電子郵件。";
                 form.Step = "request";
                 return View(form);
             }
@@ -120,7 +112,6 @@ namespace sql.Controllers
             return View(form);
         }
 
-        // 重設密碼這一步需要 Email、驗證碼、新密碼與確認密碼。
         private IActionResult HandleResetPassword(ForgotPasswordFormViewModel form)
         {
             if (string.IsNullOrWhiteSpace(form.Email) ||
@@ -128,14 +119,14 @@ namespace sql.Controllers
                 string.IsNullOrWhiteSpace(form.NewPassword) ||
                 string.IsNullOrWhiteSpace(form.ConfirmPassword))
             {
-                form.ErrorMessage = "請完整輸入電子郵件、驗證碼與新密碼";
+                form.ErrorMessage = "請完整填寫電子郵件、驗證碼與新密碼。";
                 form.Step = "reset";
                 return View(form);
             }
 
             if (form.NewPassword != form.ConfirmPassword)
             {
-                form.ErrorMessage = "兩次輸入的新密碼不一致";
+                form.ErrorMessage = "兩次輸入的新密碼不一致。";
                 form.Step = "reset";
                 return View(form);
             }
@@ -156,8 +147,6 @@ namespace sql.Controllers
             });
         }
 
-        // 這裡開始改成透過 CurrentUserService 判斷角色，
-        // 避免 Controller 自己到處重複讀 Session。
         public bool IsCurrentUserManager()
         {
             return _currentUserService.IsManager();

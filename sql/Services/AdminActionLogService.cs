@@ -4,10 +4,10 @@ using sql.Repositories;
 
 namespace sql.Services
 {
-    // 這個 Service 主要做三件事：
-    // 1. 把管理者操作轉成一致的日誌格式
-    // 2. 提供後台查詢頁分頁查詢入口
-    // 3. 提供匯出 CSV 前需要的資料
+    // 這個 Service 專門負責管理者操作紀錄。
+    // 1. 在成功操作後寫入日誌
+    // 2. 查詢與篩選紀錄
+    // 3. 匯出 CSV
     public class AdminActionLogService
     {
         private readonly AdminActionLogRepository _adminActionLogRepository;
@@ -25,7 +25,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceEndUsage,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = "管理者強制結束使用中預約"
+                Reason = "管理者強制結束使用中的預約"
             });
         }
 
@@ -37,7 +37,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceCancelScheduledReservation,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = "管理者取消未來預約"
+                Reason = "管理者取消未開始的未來預約"
             });
         }
 
@@ -48,7 +48,7 @@ namespace sql.Services
             string selectedSlotStartTime,
             bool queueExpected)
         {
-            var queueHint = queueExpected ? "，調整後預估仍需排隊" : string.Empty;
+            var queueHint = queueExpected ? "，並標記為預計需排隊" : string.Empty;
 
             WriteLog(new AdminActionLogEntry
             {
@@ -56,7 +56,7 @@ namespace sql.Services
                 ActionType = (int)AdminActionType.ForceRescheduleScheduledReservation,
                 TargetType = (int)AdminActionTargetType.Reservation,
                 TargetId = reservationId,
-                Reason = $"管理者調整未來預約至 {reservationDate} {selectedSlotStartTime}{queueHint}"
+                Reason = $"管理者將預約調整為 {reservationDate} {selectedSlotStartTime}{queueHint}"
             });
         }
 
@@ -82,7 +82,7 @@ namespace sql.Services
             var logs = _adminActionLogRepository.ExportLogs(filter ?? new AdminActionLogFilter());
             var csv = new StringBuilder();
 
-            csv.AppendLine("紀錄編號,時間,管理者編號,管理者名稱,操作類型,目標類型,目標編號,原因說明");
+            csv.AppendLine("流水號,建立時間,管理者編號,管理者名稱,操作類型,目標類型,目標編號,操作原因");
 
             foreach (var log in logs)
             {
@@ -97,7 +97,7 @@ namespace sql.Services
                     EscapeCsv(log.Reason ?? string.Empty)));
             }
 
-            // 用 UTF-8 BOM 讓 Excel 開啟時能正確顯示中文。
+            // 加上 UTF-8 BOM，避免 Excel 開啟中文時亂碼。
             var bom = Encoding.UTF8.GetPreamble();
             var content = Encoding.UTF8.GetBytes(csv.ToString());
             return [.. bom, .. content];
@@ -117,8 +117,8 @@ namespace sql.Services
             }
             catch (Exception ex)
             {
-                // 寫日誌失敗不應阻擋主要功能，所以這裡只記錄錯誤。
-                Console.WriteLine($"寫入管理者操作日誌失敗：{ex.Message}");
+                // 寫日誌失敗時不要反過來中斷主要流程，但仍保留錯誤訊息方便追查。
+                Console.WriteLine($"寫入管理者操作紀錄失敗：{ex.Message}");
             }
         }
     }
