@@ -32,6 +32,11 @@ namespace sql.Services
             return _accountRepository.GetAllAccounts();
         }
 
+        public AccountManagementQueryResult GetAccounts(AccountManagementFilter filter)
+        {
+            return _accountRepository.GetAccounts(filter);
+        }
+
         public account? ValidateUser(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))

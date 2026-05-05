@@ -21,14 +21,14 @@
                 <p>管理者操作紀錄查詢</p>
             </div>
             <nav class="portal-nav">
-                <span class="portal-nav-title">管理者功能</span>
+                <span class="portal-nav-title">管理功能</span>
+                <a class="portal-nav-link" href="/Home/Index">帳戶管理</a>
                 <a class="portal-nav-link" href="/Equipment/Index">設備管理</a>
                 <a class="portal-nav-link" href="/Equipment/ReservationDashboard">預約與排隊總覽</a>
-                <a class="portal-nav-link" href="/Home/Index">帳戶管理系統</a>
                 <a class="portal-nav-link is-active" href="/Home/AdminActionLogs">管理者操作紀錄</a>
 
                 <div class="portal-nav-group">
-                    <span class="portal-nav-title">會員頁面</span>
+                    <span class="portal-nav-title">會員功能</span>
                     <a class="portal-nav-link" href="/Equipment/Reservation">預約設備</a>
                     <a class="portal-nav-link" href="/Equipment/MyReservations">我的預約</a>
                 </div>
@@ -42,7 +42,6 @@
                     <p>可依管理者、操作類型、目標類型與日期區間查詢歷史干預紀錄。</p>
                 </div>
                 <div class="portal-user-panel">
-                    <a href="/Home/Index" class="portal-btn portal-btn-outline">返回帳戶管理</a>
                     <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
                     <a href="/Account/Logout" class="portal-btn portal-btn-neutral">登出</a>
                 </div>

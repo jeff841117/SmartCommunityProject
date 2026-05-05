@@ -33,6 +33,52 @@ namespace sql.Repositories
             return accounts;
         }
 
+        public AccountManagementQueryResult GetAccounts(AccountManagementFilter filter)
+        {
+            var normalizedFilter = NormalizeFilter(filter);
+            var items = new List<account>();
+
+            using var connection = _dbManager.CreateConnection();
+            connection.Open();
+
+            var whereParts = BuildWhereParts(normalizedFilter);
+            var whereClause = whereParts.Count == 0
+                ? string.Empty
+                : " WHERE " + string.Join(" AND ", whereParts);
+
+            using var countCommand = new SqlCommand(
+                $"SELECT COUNT(*) FROM member{whereClause}",
+                connection);
+            FillFilterParameters(countCommand, normalizedFilter);
+            var totalCount = Convert.ToInt32(countCommand.ExecuteScalar());
+
+            using var command = new SqlCommand($@"
+                SELECT id, userName, password, age, email, phone, role
+                FROM member
+                {whereClause}
+                ORDER BY id
+                OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY",
+                connection);
+
+            FillFilterParameters(command, normalizedFilter);
+            command.Parameters.AddWithValue("@offset", (normalizedFilter.Page - 1) * normalizedFilter.PageSize);
+            command.Parameters.AddWithValue("@pageSize", normalizedFilter.PageSize);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                items.Add(MapAccount(reader));
+            }
+
+            return new AccountManagementQueryResult
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = normalizedFilter.Page,
+                PageSize = normalizedFilter.PageSize
+            };
+        }
+
         public account? ValidateUser(string username, string password)
         {
             using var connection = _dbManager.CreateConnection();
@@ -257,6 +303,72 @@ namespace sql.Repositories
                     : reader.GetDateTime(reader.GetOrdinal("UsedAt")),
                 Status = reader.GetInt32(reader.GetOrdinal("Status"))
             };
+        }
+
+        private static AccountManagementFilter NormalizeFilter(AccountManagementFilter filter)
+        {
+            return new AccountManagementFilter
+            {
+                SearchField = NormalizeSearchField(filter.SearchField),
+                Keyword = string.IsNullOrWhiteSpace(filter.Keyword) ? null : filter.Keyword.Trim(),
+                ExactMatch = filter.ExactMatch,
+                Role = string.IsNullOrWhiteSpace(filter.Role) ? null : filter.Role.Trim(),
+                Page = filter.Page <= 0 ? 1 : filter.Page,
+                PageSize = filter.PageSize <= 0 ? 10 : Math.Min(filter.PageSize, 100)
+            };
+        }
+
+        private static string NormalizeSearchField(string? searchField)
+        {
+            return searchField switch
+            {
+                "password" => "password",
+                "email" => "email",
+                "phone" => "phone",
+                _ => "userName"
+            };
+        }
+
+        private static List<string> BuildWhereParts(AccountManagementFilter filter)
+        {
+            var whereParts = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(filter.Keyword))
+            {
+                var columnName = filter.SearchField switch
+                {
+                    "password" => "password",
+                    "email" => "email",
+                    "phone" => "phone",
+                    _ => "userName"
+                };
+
+                whereParts.Add(filter.ExactMatch
+                    ? $"{columnName} = @keyword"
+                    : $"{columnName} LIKE @keyword");
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Role))
+            {
+                whereParts.Add("role = @role");
+            }
+
+            return whereParts;
+        }
+
+        private static void FillFilterParameters(SqlCommand command, AccountManagementFilter filter)
+        {
+            if (!string.IsNullOrWhiteSpace(filter.Keyword))
+            {
+                command.Parameters.AddWithValue(
+                    "@keyword",
+                    filter.ExactMatch ? filter.Keyword! : $"%{filter.Keyword}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Role))
+            {
+                command.Parameters.AddWithValue("@role", filter.Role!);
+            }
         }
 
         // 建立 / 更新帳號時，集中填入共用欄位。

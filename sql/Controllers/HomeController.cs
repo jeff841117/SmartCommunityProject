@@ -23,7 +23,7 @@ namespace sql.Controllers
             _adminActionLogService = adminActionLogService;
         }
 
-        public IActionResult Index()
+        public IActionResult Index([FromQuery] AccountManagementFilter filter)
         {
             var accessRedirect = EnsureManagerRedirect();
             if (accessRedirect != null)
@@ -37,7 +37,8 @@ namespace sql.Controllers
             // 這樣 Controller 就不需要自己 new DBmanager。
             var viewModel = new AccountManagementPageViewModel
             {
-                Accounts = _accountService.GetAllAccounts(),
+                Filter = filter,
+                QueryResult = _accountService.GetAccounts(filter),
                 CurrentUserName = currentUser.UserName,
                 IsManager = currentUser.IsManager
             };
