@@ -22,7 +22,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請完整輸入帳號與密碼。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認登入資料是否填寫完整。"));
             }
 
             var user = _accountService.ValidateUser(request.UserName, request.Password);
@@ -49,7 +49,7 @@ namespace sql.Controllers.Api
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return Ok(ApiResponseFactory.OperationSuccess("已登出。"));
+            return Ok(ApiResponseFactory.OperationSuccess("登出成功。"));
         }
 
         [HttpGet("current-user")]
@@ -79,7 +79,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請輸入正確的電子郵箱。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件格式是否正確。"));
             }
 
             var result = _accountService.RequestPasswordReset(request.Email);
@@ -96,12 +96,12 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請完整輸入電子郵箱、驗證碼與新密碼。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認驗證碼與新密碼欄位是否填寫完整。"));
             }
 
             if (request.NewPassword != request.ConfirmPassword)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("確認密碼與新密碼不一致。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("新密碼與確認密碼不一致。"));
             }
 
             var result = _accountService.ResetPassword(request.Email, request.VerificationCode, request.NewPassword);

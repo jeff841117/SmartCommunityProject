@@ -28,7 +28,7 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.DataFailure<UserReservationsResponse>("請先登入。"));
+                return Unauthorized(ApiResponseFactory.DataFailure<UserReservationsResponse>("請先登入後再查看我的預約。"));
             }
 
             var result = _reservationService.GetUserReservations(currentUser);
@@ -41,7 +41,7 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>("請先登入。"));
+                return Unauthorized(ApiResponseFactory.DataFailure<FutureReservationPlanningResponse>("請先登入後再查看預約規劃。"));
             }
 
             DateOnly? parsedDate = null;
@@ -68,7 +68,7 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入後再建立立即使用。"));
             }
 
             var result = _reservationService.MakeReservation(request.EquipmentId, currentUser);
@@ -81,7 +81,7 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入後再建立未來預約。"));
             }
 
             var result = _reservationService.CreateFutureReservation(new FutureReservationRequestViewModel
@@ -101,13 +101,13 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入後再取消預約。"));
             }
 
             var success = _reservationService.CancelReservation(reservationId, currentUser);
             return Ok(success
-                ? ApiResponseFactory.OperationSuccess("取消成功。")
-                : ApiResponseFactory.OperationFailure("取消失敗。"));
+                ? ApiResponseFactory.OperationSuccess("取消預約成功。")
+                : ApiResponseFactory.OperationFailure("取消預約失敗。"));
         }
 
         [HttpPost("{reservationId:int}/end-usage")]
@@ -116,13 +116,13 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入後再結束使用。"));
             }
 
             var success = _reservationService.EndUsage(reservationId, currentUser);
             return Ok(success
                 ? ApiResponseFactory.OperationSuccess("結束使用成功。")
-                : ApiResponseFactory.OperationFailure("結束使用失敗，請確認預約狀態。"));
+                : ApiResponseFactory.OperationFailure("結束使用失敗，請確認該筆預約是否仍在使用中。"));
         }
     }
 }

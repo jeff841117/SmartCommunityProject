@@ -30,7 +30,7 @@ namespace sql.Controllers.Api
             var currentUser = _currentUserService.GetCurrentUser();
             if (!currentUser.IsAuthenticated)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure("請先登入後再取消排隊。"));
             }
 
             var success = _queueService.CancelQueue(queueId, currentUser);

@@ -8,7 +8,7 @@ namespace sql.Models
         public string password { get; set; } = string.Empty;
         public double age { get; set; }
 
-        // 預設建立的新帳號都先視為一般會員。
+        // 角色欄位預設為一般會員，只有 manager / admin 會被視為管理者。
         public string role { get; set; } = "user";
 
         public string email { get; set; } = string.Empty;

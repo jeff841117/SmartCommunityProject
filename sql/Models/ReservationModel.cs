@@ -8,7 +8,7 @@ namespace sql.Models
     {
         public int Id { get; set; }
         public byte EquipmentId { get; set; } // 設備ID
-        public string UserId { get; set; } = string.Empty; // 使用者ID
+        public string UserId { get; set; } = string.Empty; // 目前相容舊資料，實際存的是帳號字串識別值
         public DateTime StartTime { get; set; } // 開始使用時間
         public DateTime? EndTime { get; set; } // 結束使用時間（可為空表示還在進行中）
         public DateTime ReservationTime { get; set; } // 預約時間
