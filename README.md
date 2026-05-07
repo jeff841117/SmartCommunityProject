@@ -112,16 +112,30 @@ Swagger：
 screenshots 規劃與建議檔名：
 - [畫面清單與檔名規範](./docs/SCREENSHOTS.md)
 
-預計掛入的畫面：
-- `docs/screenshots/login.png`
-- `docs/screenshots/reservation.png`
-- `docs/screenshots/my-reservations.png`
-- `docs/screenshots/equipment-admin.png`
-- `docs/screenshots/dashboard.png`
-- `docs/screenshots/action-logs.png`
-- `docs/screenshots/swagger.png`
+下列區塊已經先預留好圖片位置，之後只要把對應 PNG 放進 `docs/screenshots/`，README 就會直接顯示：
 
-> 目前文件與引用位置已先整理好；若圖檔尚未補入，可之後再將實際截圖放進 `docs/screenshots/`。
+### 登入頁
+![登入頁](./docs/screenshots/login.png)
+
+### 設備預約頁
+![設備預約頁](./docs/screenshots/reservation.png)
+
+### 我的預約頁
+![我的預約頁](./docs/screenshots/my-reservations.png)
+
+### 設備管理頁
+![設備管理頁](./docs/screenshots/equipment-admin.png)
+
+### 預約與排隊總覽頁
+![預約與排隊總覽頁](./docs/screenshots/dashboard.png)
+
+### 管理者操作紀錄頁
+![管理者操作紀錄頁](./docs/screenshots/action-logs.png)
+
+### Swagger 頁面
+![Swagger 頁面](./docs/screenshots/swagger.png)
+
+> 若目前圖檔尚未放入，GitHub 會暫時顯示為空圖位置；等你補上實際截圖後，README 就能直接展示。
 
 ---
 
@@ -145,3 +159,4 @@ screenshots 規劃與建議檔名：
 - 架構圖與流程圖
 - 畫面展示與作品集整理
 - 後續 CI / Docker 規劃
+
