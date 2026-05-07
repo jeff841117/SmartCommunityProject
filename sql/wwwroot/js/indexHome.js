@@ -32,7 +32,7 @@ $(document).ready(function () {
             data: $form.serialize(),
             success: function (response) {
                 if (!response.success) {
-                    $error.removeClass('d-none').text(response.message || '新增帳號失敗');
+                    $error.removeClass('d-none').text(response.message || '新增帳號失敗。');
                     return;
                 }
 
@@ -53,13 +53,12 @@ $(document).ready(function () {
         const row = $('#row-' + userId);
 
         row.data('original', {
-            password: row.find('.password-text').text().trim(),
             email: row.find('.email-text').text().trim(),
             phone: row.find('.phone-text').text().trim()
         });
 
         row.find('.password-text, .email-text, .phone-text').hide();
-        row.find('.password-input').show();
+        row.find('.password-input').val('').show();
         row.find('.email-input').show();
         row.find('.phone-input').show();
         row.find('.edit-btn').hide();
@@ -85,12 +84,12 @@ $(document).ready(function () {
                     return;
                 }
 
-                row.find('.password-text').text(row.find('.password-input').val()).show();
+                row.find('.password-text').text('已加密').show();
                 row.find('.email-text').text(row.find('.email-input').val() || '').show();
                 row.find('.phone-text').text(row.find('.phone-input').val() || '').show();
                 row.find('.password-input, .email-input, .phone-input').hide();
                 exitEditMode(userId);
-                alert('更新成功');
+                alert('更新成功。');
             },
             error: function (xhr, status, error) {
                 alert('更新失敗：' + error);
@@ -102,10 +101,10 @@ $(document).ready(function () {
         const row = $('#row-' + userId);
         const original = row.data('original');
         if (original) {
-            row.find('.password-text').text(original.password).show();
+            row.find('.password-text').text('已加密').show();
             row.find('.email-text').text(original.email).show();
             row.find('.phone-text').text(original.phone).show();
-            row.find('.password-input').val(original.password).hide();
+            row.find('.password-input').val('').hide();
             row.find('.email-input').val(original.email).hide();
             row.find('.phone-input').val(original.phone).hide();
         }

@@ -4,8 +4,8 @@ using sql.Services;
 
 namespace sql.Controllers
 {
-    // 帳號控制器負責登入、登出與忘記密碼流程。
-    // 這裡盡量只負責接收表單、呼叫 Service、回傳畫面結果。
+    // AccountController 負責登入、登出與忘記密碼流程。
+    // 真正的帳號規則放在 AccountService，這裡只負責表單與導頁。
     public class AccountController : Controller
     {
         private readonly AccountService _accountService;
@@ -35,7 +35,7 @@ namespace sql.Controllers
         {
             if (!ModelState.IsValid)
             {
-                form.ErrorMessage = "請確認帳號與密碼是否都有填寫。";
+                form.ErrorMessage = "請完整輸入帳號與密碼。";
                 return View(form);
             }
 
@@ -93,7 +93,7 @@ namespace sql.Controllers
         {
             if (string.IsNullOrWhiteSpace(form.Email))
             {
-                form.ErrorMessage = "請輸入註冊時使用的電子郵件。";
+                form.ErrorMessage = "請輸入註冊時使用的電子郵箱。";
                 form.Step = "request";
                 return View(form);
             }
@@ -119,14 +119,14 @@ namespace sql.Controllers
                 string.IsNullOrWhiteSpace(form.NewPassword) ||
                 string.IsNullOrWhiteSpace(form.ConfirmPassword))
             {
-                form.ErrorMessage = "請完整填寫電子郵件、驗證碼與新密碼。";
+                form.ErrorMessage = "請完整輸入電子郵箱、驗證碼與新密碼。";
                 form.Step = "reset";
                 return View(form);
             }
 
             if (form.NewPassword != form.ConfirmPassword)
             {
-                form.ErrorMessage = "兩次輸入的新密碼不一致。";
+                form.ErrorMessage = "確認密碼與新密碼不一致。";
                 form.Step = "reset";
                 return View(form);
             }

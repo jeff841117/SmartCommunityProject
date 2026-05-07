@@ -22,7 +22,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認登入欄位是否填寫完整。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請完整輸入帳號與密碼。"));
             }
 
             var user = _accountService.ValidateUser(request.UserName, request.Password);
@@ -42,14 +42,14 @@ namespace sql.Controllers.Api
                 UserName = user.userName,
                 Role = user.role ?? "user",
                 IsManager = user.role == "manager" || user.role == "admin"
-            }, "登入成功"));
+            }, "登入成功。"));
         }
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return Ok(ApiResponseFactory.OperationSuccess("已成功登出。"));
+            return Ok(ApiResponseFactory.OperationSuccess("已登出。"));
         }
 
         [HttpGet("current-user")]
@@ -79,7 +79,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件欄位是否填寫正確。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請輸入正確的電子郵箱。"));
             }
 
             var result = _accountService.RequestPasswordReset(request.Email);
@@ -96,12 +96,12 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件、驗證碼與新密碼欄位是否填寫正確。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請完整輸入電子郵箱、驗證碼與新密碼。"));
             }
 
             if (request.NewPassword != request.ConfirmPassword)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("新密碼與確認密碼不一致。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("確認密碼與新密碼不一致。"));
             }
 
             var result = _accountService.ResetPassword(request.Email, request.VerificationCode, request.NewPassword);

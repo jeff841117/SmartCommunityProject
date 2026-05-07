@@ -95,8 +95,6 @@ namespace sql.Controllers
                 return Json(ApiResponseFactory.OperationFailure("請確認更新欄位是否填寫正確"));
             }
 
-            Console.WriteLine($"接收到更新請求 - ID: {form.Id}, Password: {form.Password}, Email: {form.Email}, Phone: {form.Phone}");
-
             var updatedUser = new account
             {
                 id = form.Id,

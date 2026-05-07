@@ -62,8 +62,8 @@ namespace sql.Controllers.Api
 
             var success = _reservationService.ForceEndUsage(reservationId, currentUser);
             return Ok(success
-                ? ApiResponseFactory.OperationSuccess("管理者已成功強制結束使用。")
-                : ApiResponseFactory.OperationFailure("強制結束使用失敗，請確認該筆預約是否仍在使用中。"));
+                ? ApiResponseFactory.OperationSuccess("已由管理者強制結束使用。")
+                : ApiResponseFactory.OperationFailure("強制結束失敗，請確認該預約是否仍在使用中。"));
         }
 
         [HttpPost("reservations/{reservationId:int}/cancel-scheduled")]
@@ -77,8 +77,8 @@ namespace sql.Controllers.Api
 
             var success = _reservationService.ForceCancelScheduledReservation(reservationId, currentUser);
             return Ok(success
-                ? ApiResponseFactory.OperationSuccess("管理者已成功取消未來預約。")
-                : ApiResponseFactory.OperationFailure("取消未來預約失敗，請確認該筆資料是否仍存在。"));
+                ? ApiResponseFactory.OperationSuccess("已由管理者取消未來預約。")
+                : ApiResponseFactory.OperationFailure("取消失敗，請確認該預約是否尚未開始。"));
         }
 
         [HttpPost("reservations/{reservationId:int}/reschedule-preview")]
@@ -124,8 +124,8 @@ namespace sql.Controllers.Api
 
             var success = _queueService.ForceCancelQueue(queueId, currentUser);
             return Ok(success
-                ? ApiResponseFactory.OperationSuccess("管理者已成功移除排隊。")
-                : ApiResponseFactory.OperationFailure("移除排隊失敗，請確認該筆排隊資料是否仍存在。"));
+                ? ApiResponseFactory.OperationSuccess("已由管理者移除排隊紀錄。")
+                : ApiResponseFactory.OperationFailure("移除排隊失敗，請確認該紀錄是否仍存在。"));
         }
 
         [HttpGet("action-logs")]

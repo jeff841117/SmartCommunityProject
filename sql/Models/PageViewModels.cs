@@ -93,7 +93,6 @@
             return
             [
                 new AccountManagementOption { Value = "userName", Text = "帳號" },
-                new AccountManagementOption { Value = "password", Text = "密碼" },
                 new AccountManagementOption { Value = "email", Text = "電子郵箱" },
                 new AccountManagementOption { Value = "phone", Text = "手機號碼" }
             ];

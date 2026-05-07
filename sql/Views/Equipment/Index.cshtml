@@ -67,7 +67,7 @@
     <div class="portal-shell">
         <aside class="portal-sidebar">
             <div class="portal-brand">
-                <h1>智能社區系統</h1>
+                <h1>智慧社區系統</h1>
                 <p>設備管理後台</p>
             </div>
             <nav class="portal-nav">
@@ -102,7 +102,7 @@
                     <div class="portal-section-header">
                         <div>
                             <h2 class="portal-section-title">設備清單</h2>
-                            <p class="portal-section-subtitle">直接在表格內編輯設備資料，也可從彈窗新增設備。</p>
+                            <p class="portal-section-subtitle">可直接在表格內編輯設備資料，也可從彈窗新增設備。</p>
                         </div>
                         <div class="portal-toolbar">
                             <button type="button" class="portal-btn portal-btn-primary" data-bs-toggle="modal" data-bs-target="#addEquipmentModal">新增設備</button>
@@ -139,30 +139,9 @@
                                             <td class="editable-field">
                                                 <span class="field-display" data-field="EquipmentCategory">@equipment.EquipmentCategory</span>
                                                 <select class="field-edit form-select" style="display:none;" data-field="EquipmentCategory">
-                                                    @if (equipment.EquipmentCategory == "場館")
-                                                    {
-                                                        <option value="場館" selected>場館</option>
-                                                    }
-                                                    else
-                                                    {
-                                                        <option value="場館">場館</option>
-                                                    }
-                                                    @if (equipment.EquipmentCategory == "場地")
-                                                    {
-                                                        <option value="場地" selected>場地</option>
-                                                    }
-                                                    else
-                                                    {
-                                                        <option value="場地">場地</option>
-                                                    }
-                                                    @if (equipment.EquipmentCategory == "其他")
-                                                    {
-                                                        <option value="其他" selected>其他</option>
-                                                    }
-                                                    else
-                                                    {
-                                                        <option value="其他">其他</option>
-                                                    }
+                                                    <option value="場館" selected="@(equipment.EquipmentCategory == "場館")">場館</option>
+                                                    <option value="場地" selected="@(equipment.EquipmentCategory == "場地")">場地</option>
+                                                    <option value="其他" selected="@(equipment.EquipmentCategory == "其他")">其他</option>
                                                 </select>
                                             </td>
                                             <td class="editable-field">
@@ -187,7 +166,7 @@
                                                 <button class="btn btn-sm btn-outline-secondary cancel-btn" style="display:none;">取消</button>
                                                 <form method="post" action="/Equipment/deleteEquipment" style="display:inline;">
                                                     <input type="hidden" name="id" value="@equipment.Id" />
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('確認要刪除設備 @equipment.equipmentName 嗎？')">刪除</button>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('確定要刪除設備「@equipment.equipmentName」嗎？')">刪除</button>
                                                 </form>
                                             </td>
                                         </tr>

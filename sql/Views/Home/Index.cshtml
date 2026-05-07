@@ -1,6 +1,6 @@
 @model sql.Models.AccountManagementPageViewModel
 @{
-    ViewData["Title"] = "帳戶管理系統";
+    ViewData["Title"] = "帳戶管理";
     Layout = "";
     var accounts = Model.QueryResult.Items;
     var searchFieldOptions = sql.Models.AccountManagementOptions.GetSearchFieldOptions();
@@ -29,11 +29,11 @@
                         <div id="addAccountError" class="alert alert-danger d-none" role="alert"></div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label" for="addAccountUserName">帳號名稱</label>
+                                <label class="form-label" for="addAccountUserName">帳號</label>
                                 <input id="addAccountUserName" name="UserName" class="form-control" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label" for="addAccountPassword">帳號密碼</label>
+                                <label class="form-label" for="addAccountPassword">密碼</label>
                                 <input id="addAccountPassword" name="Password" type="password" class="form-control" />
                             </div>
                             <div class="col-md-4">
@@ -62,7 +62,7 @@
     <div class="portal-shell">
         <aside class="portal-sidebar">
             <div class="portal-brand">
-                <h1>智能社區系統</h1>
+                <h1>智慧社區系統</h1>
                 <p>帳戶管理後台</p>
             </div>
             <nav class="portal-nav">
@@ -83,8 +83,8 @@
         <main class="portal-main">
             <div class="portal-topbar">
                 <div class="portal-topbar-title">
-                    <h1>帳戶管理系統</h1>
-                    <p>管理會員帳號資料，支援條件搜尋、精準搜尋與權限篩選。</p>
+                    <h1>帳戶管理</h1>
+                    <p>管理會員帳號、聯絡資訊與權限查詢條件。</p>
                 </div>
                 <div class="portal-user-panel">
                     <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
@@ -97,7 +97,7 @@
                     <div class="portal-section-header">
                         <div>
                             <h2 class="portal-section-title">查詢條件</h2>
-                            <p class="portal-section-subtitle">先選擇要搜尋的欄位，再決定是否精準搜尋。</p>
+                            <p class="portal-section-subtitle">可依帳號、電子郵箱、手機號碼或權限篩選會員資料。</p>
                         </div>
                         <div class="portal-toolbar">
                             <button type="button" class="portal-btn portal-btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">新增帳號</button>
@@ -132,7 +132,7 @@
                         <div class="d-flex align-items-end">
                             <div class="form-check">
                                 <input asp-for="Filter.ExactMatch" class="form-check-input" />
-                                <label asp-for="Filter.ExactMatch" class="form-check-label">是否精準搜尋</label>
+                                <label asp-for="Filter.ExactMatch" class="form-check-label">精準搜尋</label>
                             </div>
                         </div>
                         <input asp-for="Filter.Page" type="hidden" value="1" />
@@ -146,7 +146,7 @@
                 <section class="portal-panel">
                     <div class="portal-section-header">
                         <div>
-                            <h2 class="portal-section-title">帳號列表</h2>
+                            <h2 class="portal-section-title">帳號清單</h2>
                             <p class="portal-section-subtitle">
                                 共 <strong>@Model.QueryResult.TotalCount</strong> 筆，
                                 第 <strong>@Model.QueryResult.Page</strong> / <strong>@Math.Max(Model.QueryResult.TotalPages, 1)</strong> 頁。
@@ -160,8 +160,8 @@
                                 <thead>
                                     <tr>
                                         <th>編號</th>
-                                        <th>帳號名稱</th>
-                                        <th>帳號密碼</th>
+                                        <th>帳號</th>
+                                        <th>密碼狀態</th>
                                         <th>年齡</th>
                                         <th>電子郵箱</th>
                                         <th>手機號碼</th>
@@ -178,8 +178,8 @@
                                                 <td>@user.id</td>
                                                 <td>@user.userName</td>
                                                 <td class="password-cell">
-                                                    <span class="password-text">@user.password</span>
-                                                    <input type="password" class="form-control form-control-sm password-input" value="@user.password" placeholder="帳號密碼" style="display:none;">
+                                                    <span class="password-text">已加密</span>
+                                                    <input type="password" class="form-control form-control-sm password-input" value="" placeholder="留空表示不變更" style="display:none;">
                                                 </td>
                                                 <td>@user.age</td>
                                                 <td class="email-cell">
@@ -205,7 +205,7 @@
                                     else
                                     {
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted py-4">目前沒有符合條件的帳號資料。</td>
+                                            <td colspan="8" class="text-center text-muted py-4">目前找不到符合條件的帳號資料。</td>
                                         </tr>
                                     }
                                 </tbody>

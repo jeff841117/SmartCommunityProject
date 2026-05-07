@@ -121,8 +121,8 @@ namespace sql.Controllers.Api
 
             var success = _reservationService.EndUsage(reservationId, currentUser);
             return Ok(success
-                ? ApiResponseFactory.OperationSuccess("已成功結束使用。")
-                : ApiResponseFactory.OperationFailure("結束使用失敗，請確認該筆預約是否仍在使用中。"));
+                ? ApiResponseFactory.OperationSuccess("結束使用成功。")
+                : ApiResponseFactory.OperationFailure("結束使用失敗，請確認預約狀態。"));
         }
     }
 }

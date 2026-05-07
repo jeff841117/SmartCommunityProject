@@ -1,18 +1,34 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Mvc;
 using sql.Models;
 using sql.Repositories;
 using sql.Services;
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory,
+    WebRootPath = "wwwroot"
+});
 
-// ?????????????????????? Git?
-// ?? Gmail ????????????????
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+// 本機私密設定檔不進 Git。
+// Gmail、資料庫或其他敏感設定優先放這裡，避免直接寫進版本庫。
 builder.Configuration.AddJsonFile("appsettings.LocalSecrets.json", optional: true, reloadOnChange: true);
 
+// ASP.NET Core DataProtection 預設會把金鑰寫到使用者目錄。
+// 這台環境對預設路徑沒有權限，因此改存到專案可控資料夾，避免 Session / Cookie 啟動失敗。
+var dataProtectionKeyDirectory = Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys");
+Directory.CreateDirectory(dataProtectionKeyDirectory);
+
 // 這裡是 ASP.NET Core 的服務註冊區。
-// 可以把它想成先把系統會用到的工具準備好，
-// 之後 Controller / Service 需要時，框架會自動注入。
+// 可以把它想成先把系統會用到的工具準備好，之後 Controller / Service 需要時框架會自動注入。
 builder.Services.AddControllersWithViews();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeyDirectory));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -27,14 +43,12 @@ builder.Services.Configure<PasswordResetEmailOptions>(
     builder.Configuration.GetSection("PasswordResetEmail"));
 
 // 讓 Service 也能讀到目前這次請求的 HttpContext。
-// 我們後面用它來集中取得目前登入者資訊，而不是每個 Controller 自己讀 Session。
 builder.Services.AddHttpContextAccessor();
 
 // 舊資料存取核心目前先保留，避免一次改太多造成風險。
 builder.Services.AddScoped<DBmanager>();
 
 // Repository 是新加的資料層邊界。
-// 目的不是一次取代 DBmanager，而是把各模組的資料操作慢慢搬出來。
 builder.Services.AddScoped<EquipmentRepository>();
 builder.Services.AddScoped<AccountRepository>();
 builder.Services.AddScoped<AdminActionLogRepository>();
@@ -70,9 +84,9 @@ if (!builder.Environment.IsDevelopment())
 // Session 可以想成「目前登入者的臨時身分卡」。
 builder.Services.AddSession(options =>
 {
-    options.IdleTimeout = TimeSpan.FromMinutes(30); // 閒置 30 分鐘後過期
-    options.Cookie.HttpOnly = true; // 防止前端 JavaScript 直接讀 Cookie
-    options.Cookie.IsEssential = true; // 登入功能屬必要功能
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
 });
 
 var app = builder.Build();
@@ -99,14 +113,12 @@ app.Use(async (context, next) =>
         if (context.Request.Path.StartsWithSegments("/api") ||
             context.Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
-            // AJAX / API 請求回 JSON，方便前端程式處理。
             context.Response.StatusCode = 500;
             context.Response.ContentType = "application/json";
             await context.Response.WriteAsync("{\"success\":false,\"message\":\"系統發生錯誤\"}");
         }
         else
         {
-            // 一般頁面請求導到錯誤頁面。
             context.Response.Redirect("/Home/Error");
         }
     }
@@ -116,8 +128,6 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
-
-// Session 要放在路由之後，Controller 執行時才讀得到登入資訊。
 app.UseSession();
 
 app.UseSwagger();
@@ -129,7 +139,6 @@ app.UseSwaggerUI(options =>
 
 app.MapControllers();
 
-// 預設先進登入頁。
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
