@@ -112,7 +112,7 @@ Swagger：
 screenshots 規劃與建議檔名：
 - [畫面清單與檔名規範](./docs/SCREENSHOTS.md)
 
-下列區塊已經先預留好圖片位置，之後只要把對應 PNG 放進 `docs/screenshots/`，README 就會直接顯示：
+下列區塊已對應到目前作品集正式採用的截圖版本：
 
 ### 登入頁
 ![登入頁](./docs/screenshots/login.png)
@@ -120,14 +120,14 @@ screenshots 規劃與建議檔名：
 ### 設備預約頁
 ![設備預約頁](./docs/screenshots/reservation.png)
 
-### 我的預約頁
-![我的預約頁](./docs/screenshots/my-reservations.png)
+### 我的預約頁（使用中示意）
+![我的預約頁](./docs/screenshots/my-reservations-1.png)
 
 ### 設備管理頁
 ![設備管理頁](./docs/screenshots/equipment-admin.png)
 
 ### 預約與排隊總覽頁
-![預約與排隊總覽頁](./docs/screenshots/dashboard.png)
+![預約與排隊總覽頁](./docs/screenshots/dashboard-2.png)
 
 ### 管理者操作紀錄頁
 ![管理者操作紀錄頁](./docs/screenshots/action-logs.png)
@@ -135,7 +135,11 @@ screenshots 規劃與建議檔名：
 ### Swagger 頁面
 ![Swagger 頁面](./docs/screenshots/swagger.png)
 
-> 若目前圖檔尚未放入，GitHub 會暫時顯示為空圖位置；等你補上實際截圖後，README 就能直接展示。
+### 忘記密碼頁
+![忘記密碼頁](./docs/screenshots/forgot-password.png)
+
+### 設備預約 / 排隊鏈
+![設備預約 / 排隊鏈](./docs/screenshots/reschedule-or-chain.png)
 
 ---
 
@@ -159,5 +163,3 @@ screenshots 規劃與建議檔名：
 - 架構圖與流程圖
 - 畫面展示與作品集整理
 - [CI / Docker 規劃](./docs/CI_DOCKER_PLAN.md)
-
-
