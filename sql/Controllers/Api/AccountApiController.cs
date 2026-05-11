@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using sql.Models;
 using sql.Services;
 
@@ -25,12 +25,13 @@ namespace sql.Controllers.Api
                 return BadRequest(ApiResponseFactory.OperationFailure("請確認登入資料是否填寫完整。"));
             }
 
-            var user = _accountService.ValidateUser(request.UserName, request.Password);
-            if (user == null)
+            var loginResult = _accountService.ValidateLogin(request.UserName, request.Password);
+            if (!loginResult.Success || loginResult.User == null)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("帳號或密碼錯誤。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure(loginResult.ErrorMessage));
             }
 
+            var user = loginResult.User;
             HttpContext.Session.SetInt32("UserId", user.id);
             HttpContext.Session.SetString("UserName", user.userName);
             HttpContext.Session.SetString("UserRole", user.role ?? "user");
@@ -41,7 +42,7 @@ namespace sql.Controllers.Api
                 UserId = user.id,
                 UserName = user.userName,
                 Role = user.role ?? "user",
-                IsManager = user.role == "manager" || user.role == "admin"
+                IsManager = AccountDisplayHelper.IsManagerRole(user.role)
             }, "登入成功。"));
         }
 

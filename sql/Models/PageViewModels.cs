@@ -1,8 +1,5 @@
 ﻿namespace sql.Models
 {
-    // 這份檔案放的是「整個頁面要用到的資料模型」。
-    // 它和 API 回應模型不同，重點不是給前端 AJAX 用，
-    // 而是讓 Razor 頁面在一開始載入時，有一個明確的資料入口。
     public class EquipmentManagementPageViewModel
     {
         public List<Equipment> Equipments { get; set; } = new();
@@ -61,6 +58,7 @@
         public string? Keyword { get; set; }
         public bool ExactMatch { get; set; }
         public string? Role { get; set; }
+        public string? Status { get; set; }
         public int Page { get; set; } = 1;
         public int PageSize { get; set; } = 10;
     }
@@ -102,9 +100,37 @@
         {
             return
             [
-                new AccountManagementOption { Value = "admin", Text = "管理者" },
+                new AccountManagementOption { Value = "manager-group", Text = "管理員" },
                 new AccountManagementOption { Value = "user", Text = "普通會員" }
             ];
+        }
+
+        public static List<AccountManagementOption> GetStatusOptions()
+        {
+            return
+            [
+                new AccountManagementOption { Value = "active", Text = "啟用" },
+                new AccountManagementOption { Value = "inactive", Text = "停用" }
+            ];
+        }
+    }
+
+    public static class AccountDisplayHelper
+    {
+        public static bool IsManagerRole(string? role)
+        {
+            return string.Equals(role, "manager", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(role, "admin", StringComparison.OrdinalIgnoreCase);
+        }
+
+        public static string GetRoleText(string? role)
+        {
+            return IsManagerRole(role) ? "管理員" : "普通會員";
+        }
+
+        public static string GetStatusText(bool isActive)
+        {
+            return isActive ? "啟用" : "停用";
         }
     }
 }

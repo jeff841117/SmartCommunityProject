@@ -158,5 +158,6 @@ screenshots 規劃與建議檔名：
 - Swagger API
 - 架構圖與流程圖
 - 畫面展示與作品集整理
-- 後續 CI / Docker 規劃
+- [CI / Docker 規劃](./docs/CI_DOCKER_PLAN.md)
+
 

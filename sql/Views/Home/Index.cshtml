@@ -1,10 +1,11 @@
-@model sql.Models.AccountManagementPageViewModel
+﻿@model sql.Models.AccountManagementPageViewModel
 @{
     ViewData["Title"] = "帳戶管理";
     Layout = "";
     var accounts = Model.QueryResult.Items;
     var searchFieldOptions = sql.Models.AccountManagementOptions.GetSearchFieldOptions();
     var roleOptions = sql.Models.AccountManagementOptions.GetRoleOptions();
+    var statusOptions = sql.Models.AccountManagementOptions.GetStatusOptions();
 }
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -84,7 +85,7 @@
             <div class="portal-topbar">
                 <div class="portal-topbar-title">
                     <h1>帳戶管理</h1>
-                    <p>管理會員帳號、聯絡資訊與權限查詢條件。</p>
+                    <p>管理會員帳號、聯絡資訊、權限與啟用狀態。</p>
                 </div>
                 <div class="portal-user-panel">
                     <span class="portal-user-badge">歡迎，@Model.CurrentUserName</span>
@@ -97,7 +98,7 @@
                     <div class="portal-section-header">
                         <div>
                             <h2 class="portal-section-title">查詢條件</h2>
-                            <p class="portal-section-subtitle">可依帳號、電子郵箱、手機號碼或權限篩選會員資料。</p>
+                            <p class="portal-section-subtitle">可依帳號、電子郵箱、手機號碼、權限與啟用狀態篩選會員資料。</p>
                         </div>
                         <div class="portal-toolbar">
                             <button type="button" class="portal-btn portal-btn-primary" data-bs-toggle="modal" data-bs-target="#addAccountModal">新增帳號</button>
@@ -124,6 +125,16 @@
                             <select asp-for="Filter.Role" class="form-select">
                                 <option value="">全部</option>
                                 @foreach (var option in roleOptions)
+                                {
+                                    <option value="@option.Value">@option.Text</option>
+                                }
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label" asp-for="Filter.Status">帳號狀態</label>
+                            <select asp-for="Filter.Status" class="form-select">
+                                <option value="">全部</option>
+                                @foreach (var option in statusOptions)
                                 {
                                     <option value="@option.Value">@option.Text</option>
                                 }
@@ -166,6 +177,7 @@
                                         <th>電子郵箱</th>
                                         <th>手機號碼</th>
                                         <th>權限</th>
+                                        <th>狀態</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
@@ -174,14 +186,18 @@
                                     {
                                         @foreach (var user in accounts)
                                         {
-                                            <tr id="row-@user.id">
+                                            var isCurrentUser = string.Equals(user.userName, Model.CurrentUserName, StringComparison.OrdinalIgnoreCase);
+                                            <tr id="row-@user.id" data-user-name="@user.userName" data-is-active="@user.isActive.ToString().ToLowerInvariant()">
                                                 <td>@user.id</td>
                                                 <td>@user.userName</td>
                                                 <td class="password-cell">
                                                     <span class="password-text">已加密</span>
                                                     <input type="password" class="form-control form-control-sm password-input" value="" placeholder="留空表示不變更" style="display:none;">
                                                 </td>
-                                                <td>@user.age</td>
+                                                <td class="age-cell">
+                                                    <span class="age-text">@user.age</span>
+                                                    <input type="number" min="1" step="1" class="form-control form-control-sm age-input" value="@user.age" style="display:none;">
+                                                </td>
                                                 <td class="email-cell">
                                                     <span class="email-text">@user.email</span>
                                                     <input type="email" class="form-control form-control-sm email-input" value="@user.email" placeholder="電子郵箱" style="display:none;">
@@ -190,14 +206,28 @@
                                                     <span class="phone-text">@user.phone</span>
                                                     <input type="tel" class="form-control form-control-sm phone-input" value="@user.phone" placeholder="手機號碼" style="display:none;">
                                                 </td>
-                                                <td>@(user.role == "admin" ? "管理者" : "普通會員")</td>
+                                                <td>@sql.Models.AccountDisplayHelper.GetRoleText(user.role)</td>
                                                 <td>
-                                                    @if (user.role == "user")
-                                                    {
+                                                    <span class="status-badge @(user.isActive ? "text-bg-success" : "text-bg-secondary")">@sql.Models.AccountDisplayHelper.GetStatusText(user.isActive)</span>
+                                                </td>
+                                                <td>
+                                                    <div class="d-flex flex-wrap gap-2">
                                                         <button class="btn btn-primary btn-sm edit-btn" data-id="@user.id">編輯</button>
                                                         <button class="btn btn-success btn-sm save-btn" data-id="@user.id" style="display:none;">儲存</button>
                                                         <button class="btn btn-secondary btn-sm cancel-btn" data-id="@user.id" style="display:none;">取消</button>
-                                                    }
+                                                        @if (isCurrentUser)
+                                                        {
+                                                            <button class="btn btn-outline-secondary btn-sm" disabled>目前登入帳號</button>
+                                                        }
+                                                        else if (user.isActive)
+                                                        {
+                                                            <button class="btn btn-outline-danger btn-sm toggle-status-btn" data-id="@user.id" data-active="false">停用</button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <button class="btn btn-outline-success btn-sm toggle-status-btn" data-id="@user.id" data-active="true">啟用</button>
+                                                        }
+                                                    </div>
                                                 </td>
                                             </tr>
                                         }
@@ -205,7 +235,7 @@
                                     else
                                     {
                                         <tr>
-                                            <td colspan="8" class="text-center text-muted py-4">目前找不到符合條件的帳號資料。</td>
+                                            <td colspan="9" class="text-center text-muted py-4">目前找不到符合條件的帳號資料。</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -220,6 +250,7 @@
                            asp-route-Keyword="@Model.Filter.Keyword"
                            asp-route-ExactMatch="@Model.Filter.ExactMatch"
                            asp-route-Role="@Model.Filter.Role"
+                           asp-route-Status="@Model.Filter.Status"
                            asp-route-Page="@(Model.QueryResult.Page - 1)"
                            asp-route-PageSize="@Model.Filter.PageSize">上一頁</a>
 
@@ -231,6 +262,7 @@
                            asp-route-Keyword="@Model.Filter.Keyword"
                            asp-route-ExactMatch="@Model.Filter.ExactMatch"
                            asp-route-Role="@Model.Filter.Role"
+                           asp-route-Status="@Model.Filter.Status"
                            asp-route-Page="@(Model.QueryResult.Page + 1)"
                            asp-route-PageSize="@Model.Filter.PageSize">下一頁</a>
                     </div>

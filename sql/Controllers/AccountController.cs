@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using sql.Models;
 using sql.Services;
 
@@ -39,18 +39,19 @@ namespace sql.Controllers
                 return View(form);
             }
 
-            var user = _accountService.ValidateUser(form.UserName, form.Password);
-            if (user == null)
+            var loginResult = _accountService.ValidateLogin(form.UserName, form.Password ?? string.Empty);
+            if (!loginResult.Success || loginResult.User == null)
             {
-                form.ErrorMessage = "帳號或密碼錯誤。";
+                form.ErrorMessage = loginResult.ErrorMessage;
                 return View(form);
             }
 
+            var user = loginResult.User;
             HttpContext.Session.SetInt32("UserId", user.id);
             HttpContext.Session.SetString("UserName", user.userName);
             HttpContext.Session.SetString("UserRole", user.role ?? "user");
 
-            if (user.role == "manager" || user.role == "admin")
+            if (AccountDisplayHelper.IsManagerRole(user.role))
             {
                 return RedirectToAction("Index", "Equipment");
             }
@@ -159,3 +160,4 @@ namespace sql.Controllers
         }
     }
 }
+
