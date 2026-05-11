@@ -20,6 +20,7 @@ namespace sql.Repositories
 
             using var connection = _dbManager.CreateConnection();
             EnsureEquipmentCategoryColumn(connection);
+            EnsureLegacyEquipmentData(connection);
             using var cmd = new SqlCommand("SELECT * FROM Equipment", connection);
 
             if (connection.State != System.Data.ConnectionState.Open)
@@ -39,6 +40,7 @@ namespace sql.Repositories
         {
             using var connection = _dbManager.CreateConnection();
             EnsureEquipmentCategoryColumn(connection);
+            EnsureLegacyEquipmentData(connection);
             using var cmd = new SqlCommand("SELECT * FROM Equipment WHERE Id = @Id", connection);
             cmd.Parameters.AddWithValue("@Id", equipmentId);
 
@@ -161,6 +163,36 @@ namespace sql.Repositories
                 WHERE EquipmentCategory IS NULL;",
                 connection);
             updateCmd.ExecuteNonQuery();
+        }
+
+        // 這裡專門收斂舊展示資料留下來的明顯異常值。
+        // 目的不是取代正式 migration，而是讓測試站與作品集版在讀取設備清單時，
+        // 不會因為 AvailableTime=0 或 OpenTime>=CloseTime 這種舊資料而出現不合理畫面。
+        private static void EnsureLegacyEquipmentData(SqlConnection connection)
+        {
+            var wasClosed = connection.State != System.Data.ConnectionState.Open;
+            if (wasClosed)
+            {
+                connection.Open();
+            }
+
+            using var cleanupCmd = new SqlCommand(@"
+                UPDATE Equipment
+                SET EquipmentCategory = N'場館'
+                WHERE EquipmentCategory IS NULL
+                   OR EquipmentCategory NOT IN (N'場館', N'場地', N'其他');
+
+                UPDATE Equipment
+                SET AvailableTime = 60
+                WHERE AvailableTime < 1
+                   OR AvailableTime > 1440;
+
+                UPDATE Equipment
+                SET OpenTime = '09:00',
+                    CloseTime = '18:00'
+                WHERE OpenTime >= CloseTime;", connection);
+
+            cleanupCmd.ExecuteNonQuery();
         }
     }
 }

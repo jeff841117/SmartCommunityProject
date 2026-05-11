@@ -1,8 +1,8 @@
 namespace sql.Models
 {
-    // 這份檔案集中放「功能層回應模型」。
-    // 它們通常是 Controller / Service / Repository 之間共用的資料形狀，
-    // 目的是讓前後端看到的欄位更穩定，而不是每次都臨時拼匿名物件。
+    // 我的預約頁回傳資料。
+    // 這裡把未來預約、使用中、排隊中與歷史資料拆開，
+    // 讓前台與 API 可以直接照區塊顯示，不需要再額外整理 Dictionary。
     public class UserReservationsResponse
     {
         public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
@@ -12,8 +12,9 @@ namespace sql.Models
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 
-    // 未來預約資料除了基本時段與狀態，第二階段開始也會帶出風險摘要，
-    // 讓前台與後台都能直接知道這筆預約是正常保留，還是預估到時仍需排隊。
+    // 未來預約項目。
+    // 這裡除了時間與狀態，也會帶出風險摘要，
+    // 方便前台與後台直接知道這筆預約是否可能到時轉排隊。
     public class ScheduledReservationItem
     {
         public int Id { get; set; }
@@ -33,9 +34,8 @@ namespace sql.Models
         public string RiskSummary { get; set; } = string.Empty;
     }
 
-    // 設備可用性檢查結果。
-    // 這類模型的重點是讓前端一次拿到目前是否可預約、是否已滿、
-    // 以及相關的開放時間與等待估算基礎資料。
+    // 單設備可用性檢查結果。
+    // 前台立即使用、查看預約時間與排隊資訊都會用到這組資料。
     public class EquipmentAvailabilityResponse
     {
         public bool IsAvailable { get; set; }
@@ -81,7 +81,7 @@ namespace sql.Models
         public int Position { get; set; }
     }
 
-    // 後台總覽頁使用的彙整模型。
+    // 後台預約 / 排隊總覽回傳資料。
     public class ReservationDashboardResponse
     {
         public List<ScheduledReservationItem> ScheduledReservations { get; set; } = new();
@@ -91,8 +91,8 @@ namespace sql.Models
         public string ServerTaiwanTime { get; set; } = string.Empty;
     }
 
-    // 這是後台總覽用的設備摘要模型。
-    // 目的不是取代完整清單，而是讓管理者先看到每台設備的壓力概況，再決定要不要點進設備鏈。
+    // 後台設備摘要。
+    // 用來快速看每台設備目前的預約壓力、排隊人數與風險等級。
     public class EquipmentDashboardSummaryItem
     {
         public byte EquipmentId { get; set; }
@@ -107,8 +107,8 @@ namespace sql.Models
         public string PressureSummary { get; set; } = string.Empty;
     }
 
-    // 這是後台總覽頁的篩選條件。
-    // 先用明確模型集中條件，之後要補更多篩選時不用再改一堆 action 參數。
+    // 後台總覽篩選條件。
+    // 這些條件同時用在頁面與匯出，避免畫面與 CSV 規則不一致。
     public class ReservationDashboardFilter
     {
         public string? EquipmentKeyword { get; set; }
@@ -161,7 +161,8 @@ namespace sql.Models
         }
     }
 
-    // 單設備預約鏈，讓管理者把同一台設備的未來預約、使用中與排隊中一次看完。
+    // 單設備預約 / 排隊鏈資料。
+    // 後台開設備鏈 modal 時，會一次顯示未來預約、使用中與排隊中的完整清單。
     public class EquipmentReservationChainResponse
     {
         public byte EquipmentId { get; set; }

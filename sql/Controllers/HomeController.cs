@@ -32,9 +32,6 @@ namespace sql.Controllers
             }
 
             var currentUser = GetCurrentUserInfo();
-
-            // 帳號列表現在改成走 AccountService，
-            // 這樣 Controller 就不需要自己 new DBmanager。
             var viewModel = new AccountManagementPageViewModel
             {
                 Filter = filter,
@@ -92,20 +89,48 @@ namespace sql.Controllers
 
             if (!ModelState.IsValid)
             {
-                return Json(ApiResponseFactory.OperationFailure("請確認更新欄位是否填寫正確"));
-            }
+                var firstError = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
 
-            Console.WriteLine($"接收到更新請求 - ID: {form.Id}, Password: {form.Password}, Email: {form.Email}, Phone: {form.Phone}");
+                return Json(ApiResponseFactory.OperationFailure(firstError ?? "請確認更新欄位是否填寫正確"));
+            }
 
             var updatedUser = new account
             {
                 id = form.Id,
-                password = form.Password,
+                password = form.Password ?? string.Empty,
+                age = form.Age,
                 email = form.Email,
                 phone = form.Phone
             };
 
             var result = _accountService.UpdateAccount(updatedUser);
+            return Json(result);
+        }
+
+        [HttpPost]
+        public JsonResult ToggleAccountStatus(int id, bool isActive)
+        {
+            if (EnsureManagerRedirect() != null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+            }
+
+            var currentUser = GetCurrentUserInfo();
+            var targetUser = _accountService.GetAllAccounts().FirstOrDefault(user => user.id == id);
+            if (targetUser == null)
+            {
+                return Json(ApiResponseFactory.OperationFailure("找不到要更新的帳號"));
+            }
+
+            if (!isActive && string.Equals(targetUser.userName, currentUser.UserName, StringComparison.OrdinalIgnoreCase))
+            {
+                return Json(ApiResponseFactory.OperationFailure("不能停用目前登入中的帳號"));
+            }
+
+            var result = _accountService.ToggleAccountStatus(id, isActive);
             return Json(result);
         }
 
@@ -141,10 +166,12 @@ namespace sql.Controllers
             var user = new account
             {
                 userName = form.UserName,
-                password = form.Password,
+                password = form.Password ?? string.Empty,
                 age = form.Age,
                 email = form.Email,
-                phone = form.Phone
+                phone = form.Phone,
+                role = "user",
+                isActive = true
             };
 
             var created = _accountService.CreateAccount(user);
@@ -168,15 +195,15 @@ namespace sql.Controllers
                 return View(form);
             }
 
-            // 建立帳號也改成走 AccountService，
-            // 後面如果要補 email 驗證或預設角色規則，就有固定入口可以加。
             var user = new account
             {
                 userName = form.UserName,
-                password = form.Password,
+                password = form.Password ?? string.Empty,
                 age = form.Age,
                 email = form.Email,
-                phone = form.Phone
+                phone = form.Phone,
+                role = "user",
+                isActive = true
             };
 
             var created = _accountService.CreateAccount(user);
@@ -201,3 +228,5 @@ namespace sql.Controllers
         }
     }
 }
+
+

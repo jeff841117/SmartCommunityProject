@@ -1,10 +1,7 @@
 namespace sql.Models
 {
-    // 這幾個 ViewModel / DTO 是專門給「我的預約」頁面使用的資料形狀。
-    // 它們的目的不是取代資料表模型，而是讓前端拿到的資料欄位更清楚、
-    // 也讓 Service / Repository 不需要再用 Dictionary<string, object> 傳來傳去。
-
-    // 進行中的預約資料。
+    // 使用中的預約資料。
+    // UserId 目前為了相容舊資料，實際存的是帳號字串識別值，不是會員主鍵。
     public class ActiveReservationItem
     {
         public int Id { get; set; }
@@ -21,6 +18,7 @@ namespace sql.Models
     }
 
     // 排隊中的資料。
+    // UserId 同樣為舊資料相容用的帳號字串識別值。
     public class WaitingReservationItem
     {
         public int Id { get; set; }
@@ -34,7 +32,8 @@ namespace sql.Models
         public string QueueTypeText { get; set; } = string.Empty;
     }
 
-    // 歷史記錄資料。
+    // 歷史紀錄資料。
+    // UserId 目前仍保留帳號字串識別值，以相容既有資料表內容。
     public class HistoryReservationItem
     {
         public int Id { get; set; }

@@ -1,3 +1,4 @@
+﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Options;
 using sql.Models;
@@ -6,8 +7,6 @@ using System.Security.Cryptography;
 
 namespace sql.Services
 {
-    // AccountService 負責帳號查詢、登入驗證與忘記密碼流程。
-    // 這層會把資料庫錯誤轉成較容易理解的結果訊息。
     public class AccountService
     {
         private readonly AccountRepository _accountRepository;
@@ -37,14 +36,58 @@ namespace sql.Services
             return _accountRepository.GetAccounts(filter);
         }
 
-        public account? ValidateUser(string username, string password)
+        public AccountLoginResult ValidateLogin(string username, string password)
         {
             if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
             {
-                return null;
+                return new AccountLoginResult
+                {
+                    Success = false,
+                    ErrorMessage = "請輸入帳號與密碼"
+                };
             }
 
-            return _accountRepository.ValidateUser(username, password);
+            var user = _accountRepository.GetAccountByUserName(username);
+            if (user == null)
+            {
+                return InvalidLogin();
+            }
+
+            if (!user.isActive)
+            {
+                return new AccountLoginResult
+                {
+                    Success = false,
+                    ErrorMessage = "該帳號異常，請聯絡管理員"
+                };
+            }
+
+            if (PasswordHashHelper.LooksHashed(user.password))
+            {
+                var result = PasswordHashHelper.VerifyPassword(user, password);
+                if (result is PasswordVerificationResult.Success or PasswordVerificationResult.SuccessRehashNeeded)
+                {
+                    return new AccountLoginResult { Success = true, User = user };
+                }
+
+                return InvalidLogin();
+            }
+
+            if (!string.Equals(user.password, password, StringComparison.Ordinal))
+            {
+                return InvalidLogin();
+            }
+
+            // 舊資料若仍是明文密碼，登入成功後立即升級成雜湊。
+            var upgradedHash = PasswordHashHelper.HashPassword(user, password);
+            _accountRepository.UpdatePasswordByUserId(user.id, upgradedHash);
+            user.password = upgradedHash;
+
+            return new AccountLoginResult
+            {
+                Success = true,
+                User = user
+            };
         }
 
         public ForgotPasswordRequestResult RequestPasswordReset(string email)
@@ -54,7 +97,7 @@ namespace sql.Services
                 return new ForgotPasswordRequestResult
                 {
                     Success = false,
-                    Message = "請輸入電子郵件。"
+                    Message = "請輸入電子郵箱"
                 };
             }
 
@@ -66,14 +109,22 @@ namespace sql.Services
                     return new ForgotPasswordRequestResult
                     {
                         Success = false,
-                        Message = "找不到這個電子郵件對應的帳號。"
+                        Message = "找不到對應的帳號資料"
+                    };
+                }
+
+                if (!user.isActive)
+                {
+                    return new ForgotPasswordRequestResult
+                    {
+                        Success = false,
+                        Message = "該帳號異常，請聯絡管理員"
                     };
                 }
 
                 var verificationCode = GenerateSixDigitCode();
                 var expiredAt = DateTime.Now.AddMinutes(10);
 
-                // 先把舊的有效驗證碼標記為失效，再建立新的驗證碼。
                 _accountRepository.CancelActivePasswordResetCodes(user.id, email);
                 _accountRepository.CreatePasswordResetCode(new PasswordResetCodeRecord
                 {
@@ -115,7 +166,7 @@ namespace sql.Services
                 return new ForgotPasswordRequestResult
                 {
                     Success = false,
-                    Message = $"忘記密碼流程發生資料庫錯誤：{sqlEx.Message}"
+                    Message = $"資料庫發生錯誤：{sqlEx.Message}"
                 };
             }
             catch (Exception ex)
@@ -123,7 +174,7 @@ namespace sql.Services
                 return new ForgotPasswordRequestResult
                 {
                     Success = false,
-                    Message = $"忘記密碼流程發生錯誤：{ex.Message}"
+                    Message = $"處理忘記密碼時發生錯誤：{ex.Message}"
                 };
             }
         }
@@ -137,7 +188,7 @@ namespace sql.Services
                 return new ResetPasswordResult
                 {
                     Success = false,
-                    Message = "請完整填寫電子郵件、驗證碼與新密碼。"
+                    Message = "請確認電子郵箱、驗證碼與新密碼都已填寫"
                 };
             }
 
@@ -149,7 +200,7 @@ namespace sql.Services
                     return new ResetPasswordResult
                     {
                         Success = false,
-                        Message = "驗證碼錯誤或不存在。"
+                        Message = "驗證碼錯誤或找不到對應紀錄"
                     };
                 }
 
@@ -158,7 +209,7 @@ namespace sql.Services
                     return new ResetPasswordResult
                     {
                         Success = false,
-                        Message = "這組驗證碼已經使用過了。"
+                        Message = "這組驗證碼已使用過"
                     };
                 }
 
@@ -167,7 +218,7 @@ namespace sql.Services
                     return new ResetPasswordResult
                     {
                         Success = false,
-                        Message = "這組驗證碼已經過期。"
+                        Message = "這組驗證碼已過期"
                     };
                 }
 
@@ -176,7 +227,7 @@ namespace sql.Services
                     return new ResetPasswordResult
                     {
                         Success = false,
-                        Message = "這組驗證碼已被新的申請取代。"
+                        Message = "這組驗證碼已失效，請重新申請"
                     };
                 }
 
@@ -186,18 +237,21 @@ namespace sql.Services
                     return new ResetPasswordResult
                     {
                         Success = false,
-                        Message = "驗證碼已超過 10 分鐘效期，請重新申請。"
+                        Message = "驗證碼已超過 10 分鐘有效期，請重新申請"
                     };
                 }
 
-                _accountRepository.UpdatePasswordByUserId(resetCode.UserId, newPassword);
+                var passwordHolder = new account { id = resetCode.UserId };
+                var hashedPassword = PasswordHashHelper.HashPassword(passwordHolder, newPassword);
+
+                _accountRepository.UpdatePasswordByUserId(resetCode.UserId, hashedPassword);
                 _accountRepository.MarkPasswordResetCodeAsVerified(resetCode.Id);
                 _accountRepository.CancelActivePasswordResetCodes(resetCode.UserId, email);
 
                 return new ResetPasswordResult
                 {
                     Success = true,
-                    Message = "密碼已重設成功，請使用新密碼重新登入。"
+                    Message = "密碼已重設完成，請使用新密碼重新登入"
                 };
             }
             catch (SqlException sqlEx)
@@ -220,22 +274,18 @@ namespace sql.Services
 
         public ApiDetailedOperationResponse UpdateAccount(account user)
         {
-            if (string.IsNullOrWhiteSpace(user.password))
-            {
-                return new ApiDetailedOperationResponse
-                {
-                    Success = false,
-                    Message = "請輸入密碼。"
-                };
-            }
-
             try
             {
+                if (!string.IsNullOrWhiteSpace(user.password))
+                {
+                    user.password = PasswordHashHelper.HashPassword(user, user.password);
+                }
+
                 _accountRepository.UpdateAccount(user);
                 return new ApiDetailedOperationResponse
                 {
                     Success = true,
-                    Message = "更新成功。"
+                    Message = "帳號更新成功"
                 };
             }
             catch (SqlException sqlEx)
@@ -243,7 +293,7 @@ namespace sql.Services
                 return new ApiDetailedOperationResponse
                 {
                     Success = false,
-                    Message = $"資料庫錯誤：{sqlEx.Message}",
+                    Message = $"帳號更新失敗：{sqlEx.Message}",
                     ErrorCode = sqlEx.Number
                 };
             }
@@ -252,8 +302,29 @@ namespace sql.Services
                 return new ApiDetailedOperationResponse
                 {
                     Success = false,
-                    Message = $"更新失敗：{ex.Message}",
+                    Message = $"帳號更新失敗：{ex.Message}",
                     StackTrace = ex.StackTrace
+                };
+            }
+        }
+
+        public ApiOperationResponse ToggleAccountStatus(int id, bool isActive)
+        {
+            try
+            {
+                _accountRepository.ToggleAccountStatus(id, isActive);
+                return new ApiOperationResponse
+                {
+                    Success = true,
+                    Message = isActive ? "帳號已啟用" : "帳號已停用"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ApiOperationResponse
+                {
+                    Success = false,
+                    Message = $"更新帳號狀態失敗：{ex.Message}"
                 };
             }
         }
@@ -262,6 +333,9 @@ namespace sql.Services
         {
             try
             {
+                user.role = string.IsNullOrWhiteSpace(user.role) ? "user" : user.role;
+                user.isActive = true;
+                user.password = PasswordHashHelper.HashPassword(user, user.password);
                 _accountRepository.CreateAccount(user);
                 return true;
             }
@@ -271,7 +345,6 @@ namespace sql.Services
             }
         }
 
-        // 這個診斷資訊只用在測試環境，方便確認寄信橋接設定是否正確。
         public PasswordResetEmailDiagnosticInfo GetPasswordResetEmailDiagnosticInfo()
         {
             var localSecretsPath = Path.Combine(_environment.ContentRootPath, "appsettings.LocalSecrets.json");
@@ -294,10 +367,18 @@ namespace sql.Services
             };
         }
 
-        // 驗證碼固定為 6 碼，對應目前忘記密碼流程的需求。
         private static string GenerateSixDigitCode()
         {
             return RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
+        }
+
+        private static AccountLoginResult InvalidLogin()
+        {
+            return new AccountLoginResult
+            {
+                Success = false,
+                ErrorMessage = "帳號或密碼錯誤"
+            };
         }
     }
 }

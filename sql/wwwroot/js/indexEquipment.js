@@ -20,11 +20,7 @@ $(document).ready(function () {
         $row.find('.field-edit').each(function () {
             const $input = $(this);
             const $display = $input.siblings('.field-display');
-            if ($input.is('select')) {
-                $input.val($display.text().trim());
-            } else {
-                $input.val($display.text().trim());
-            }
+            $input.val($display.text().trim());
         });
 
         $row.find('.field-display').show();
@@ -38,7 +34,6 @@ $(document).ready(function () {
         const equipment = {
             Id: id,
             EquipmentName: $row.find('input[data-field="equipmentName"]').val(),
-            // 這裡一定要抓編輯中的 select，否則會抓到顯示用 span 導致設備種類沒送出去。
             EquipmentCategory: $row.find('.field-edit[data-field="EquipmentCategory"]').val(),
             MaxUsers: $row.find('input[data-field="MaxUsers"]').val(),
             AvailableTime: $row.find('input[data-field="AvailableTime"]').val(),
@@ -52,7 +47,7 @@ $(document).ready(function () {
             data: equipment,
             success: function (response) {
                 if (!response.success) {
-                    alert('更新失敗：' + (response.message || '請稍後再試'));
+                    alert('更新失敗：' + (response.message || '請確認設備資料是否正確。'));
                     return;
                 }
 
@@ -68,10 +63,10 @@ $(document).ready(function () {
                 $row.find('.field-display').show();
                 $row.find('.field-edit').hide();
 
-                alert('更新成功');
+                alert('更新設備成功。');
             },
             error: function (xhr, status, error) {
-                alert('更新失敗：' + error);
+                alert('更新設備失敗：' + error);
             }
         });
     });
@@ -89,7 +84,7 @@ $(document).ready(function () {
             data: $form.serialize(),
             success: function (response) {
                 if (!response.success) {
-                    $error.removeClass('d-none').text(response.message || '新增設備失敗');
+                    $error.removeClass('d-none').text(response.message || '新增設備失敗。');
                     return;
                 }
 

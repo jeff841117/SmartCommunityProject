@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using sql.Models;
 using sql.Services;
 
@@ -22,15 +22,16 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認登入欄位是否填寫完整。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認登入資料是否填寫完整。"));
             }
 
-            var user = _accountService.ValidateUser(request.UserName, request.Password);
-            if (user == null)
+            var loginResult = _accountService.ValidateLogin(request.UserName, request.Password);
+            if (!loginResult.Success || loginResult.User == null)
             {
-                return Unauthorized(ApiResponseFactory.OperationFailure("帳號或密碼錯誤。"));
+                return Unauthorized(ApiResponseFactory.OperationFailure(loginResult.ErrorMessage));
             }
 
+            var user = loginResult.User;
             HttpContext.Session.SetInt32("UserId", user.id);
             HttpContext.Session.SetString("UserName", user.userName);
             HttpContext.Session.SetString("UserRole", user.role ?? "user");
@@ -41,15 +42,15 @@ namespace sql.Controllers.Api
                 UserId = user.id,
                 UserName = user.userName,
                 Role = user.role ?? "user",
-                IsManager = user.role == "manager" || user.role == "admin"
-            }, "登入成功"));
+                IsManager = AccountDisplayHelper.IsManagerRole(user.role)
+            }, "登入成功。"));
         }
 
         [HttpPost("logout")]
         public IActionResult Logout()
         {
             HttpContext.Session.Clear();
-            return Ok(ApiResponseFactory.OperationSuccess("已成功登出。"));
+            return Ok(ApiResponseFactory.OperationSuccess("登出成功。"));
         }
 
         [HttpGet("current-user")]
@@ -79,7 +80,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件欄位是否填寫正確。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件格式是否正確。"));
             }
 
             var result = _accountService.RequestPasswordReset(request.Email);
@@ -96,7 +97,7 @@ namespace sql.Controllers.Api
         {
             if (!ModelState.IsValid)
             {
-                return BadRequest(ApiResponseFactory.OperationFailure("請確認電子郵件、驗證碼與新密碼欄位是否填寫正確。"));
+                return BadRequest(ApiResponseFactory.OperationFailure("請確認驗證碼與新密碼欄位是否填寫完整。"));
             }
 
             if (request.NewPassword != request.ConfirmPassword)

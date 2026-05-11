@@ -7,7 +7,7 @@ namespace sql.Models
     {
         public int Id { get; set; }
         public byte EquipmentId { get; set; } // 設備ID
-        public string UserId { get; set; } = string.Empty; // 使用者ID
+        public string UserId { get; set; } = string.Empty; // 目前相容舊資料，實際存的是帳號字串識別值
         public DateTime QueueTime { get; set; } // 加入排隊時間
         public int Position { get; set; } // 排隊位置
         public int? ReservationId { get; set; } // 如果是預約到點轉排隊，會指向原本的預約記錄

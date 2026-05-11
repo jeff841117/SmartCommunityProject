@@ -168,6 +168,10 @@ namespace sql.Controllers
                 _equipmentService.CreateEquipment(equipment);
                 return Json(ApiResponseFactory.OperationSuccess("新增設備成功"));
             }
+            catch (ArgumentException ex)
+            {
+                return Json(ApiResponseFactory.OperationFailure(ex.Message));
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "透過彈窗新增設備時發生錯誤");
@@ -205,6 +209,11 @@ namespace sql.Controllers
                 };
 
                 _equipmentService.CreateEquipment(equipment);
+            }
+            catch (ArgumentException ex)
+            {
+                form.ErrorMessage = ex.Message;
+                return View(form);
             }
             catch
             {
@@ -271,6 +280,10 @@ namespace sql.Controllers
                     _equipmentService.UpdateEquipment(fallbackEquipment);
                     return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
                 }
+                catch (ArgumentException ex)
+                {
+                    return Json(ApiResponseFactory.OperationFailure(ex.Message));
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "使用後備解析更新設備 {EquipmentId} 時發生錯誤", fallbackEquipment.Id);
@@ -293,6 +306,10 @@ namespace sql.Controllers
 
                 _equipmentService.UpdateEquipment(equipment);
                 return Json(ApiResponseFactory.OperationSuccess("更新設備成功"));
+            }
+            catch (ArgumentException ex)
+            {
+                return Json(ApiResponseFactory.OperationFailure(ex.Message));
             }
             catch (Exception ex)
             {
@@ -327,6 +344,12 @@ namespace sql.Controllers
                 return false;
             }
 
+            if (equipmentCategory != "場館" && equipmentCategory != "場地" && equipmentCategory != "其他")
+            {
+                errorMessage = "設備種類僅支援場館、場地或其他";
+                return false;
+            }
+
             var maxUsersValue = Request.Form["MaxUsers"].ToString();
             if (!byte.TryParse(maxUsersValue, out var maxUsers) || maxUsers == 0)
             {
@@ -335,9 +358,9 @@ namespace sql.Controllers
             }
 
             var availableTimeValue = Request.Form["AvailableTime"].ToString();
-            if (!short.TryParse(availableTimeValue, out var availableTime) || availableTime < 0 || availableTime > 1440)
+            if (!short.TryParse(availableTimeValue, out var availableTime) || availableTime < 1 || availableTime > 1440)
             {
-                errorMessage = "可使用時間必須介於 0 到 1440 分鐘";
+                errorMessage = "可使用時間必須介於 1 到 1440 分鐘";
                 return false;
             }
 
@@ -352,6 +375,12 @@ namespace sql.Controllers
             if (!TimeSpan.TryParse(closeTimeValue, out var closeTime))
             {
                 errorMessage = "關閉時間格式錯誤";
+                return false;
+            }
+
+            if (openTime >= closeTime)
+            {
+                errorMessage = "開放時間必須早於關閉時間";
                 return false;
             }
 
@@ -379,6 +408,15 @@ namespace sql.Controllers
             try
             {
                 var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "請先登入系統"
+                    });
+                }
+
                 var result = _reservationService.MakeReservation(equipmentId, currentUser);
                 return Json(result);
             }
@@ -401,6 +439,15 @@ namespace sql.Controllers
             try
             {
                 var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsAuthenticated)
+                {
+                    return Json(new ReservationResult
+                    {
+                        Success = false,
+                        Message = "請先登入系統"
+                    });
+                }
+
                 var result = _reservationService.CreateFutureReservation(form, currentUser);
                 return Json(result);
             }
@@ -554,6 +601,11 @@ namespace sql.Controllers
             try
             {
                 var currentUser = _currentUserService.GetCurrentUser();
+                if (!currentUser.IsManager)
+                {
+                    return Json(ApiResponseFactory.DataFailure<ReservationAdjustmentPreviewResponse>("您沒有管理員權限"));
+                }
+
                 var preview = _reservationService.PreviewRescheduleScheduledReservation(
                     new AdminRescheduleReservationFormViewModel
                     {
@@ -578,6 +630,11 @@ namespace sql.Controllers
         {
             try
             {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
                 _queueService.ProcessAllQueues();
                 return Json(ApiResponseFactory.OperationSuccess("已處理所有排隊隊列"));
             }
@@ -593,6 +650,11 @@ namespace sql.Controllers
         {
             try
             {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
                 _queueService.ProcessEquipmentQueue(equipmentId);
                 return Json(ApiResponseFactory.OperationSuccess("已處理設備排隊隊列"));
             }
@@ -608,6 +670,11 @@ namespace sql.Controllers
         {
             try
             {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.DataFailure<QueueDebugInfoResponse>("您沒有管理員權限"));
+                }
+
                 var debugInfo = _queueService.GetQueueDebugInfo(equipmentId);
                 return Json(ApiResponseFactory.DataSuccess(debugInfo));
             }
@@ -778,9 +845,9 @@ namespace sql.Controllers
             try
             {
                 var currentUser = _currentUserService.GetCurrentUser();
-                if (!currentUser.IsAuthenticated)
+                if (!currentUser.IsManager)
                 {
-                    return Json(ApiResponseFactory.Error("請先登入"));
+                    return Json(ApiResponseFactory.Error("您沒有管理員權限"));
                 }
 
                 var reservations = _reservationService.GetUserReservations(currentUser);
@@ -838,6 +905,11 @@ namespace sql.Controllers
         {
             try
             {
+                if (!_currentUserService.IsManager())
+                {
+                    return Json(ApiResponseFactory.OperationFailure("您沒有管理員權限"));
+                }
+
                 _reservationService.AutoCompleteExpiredReservations();
                 return Json(ApiResponseFactory.OperationSuccess("已手動清理過期預約"));
             }
